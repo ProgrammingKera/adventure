@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Trip - AI Trip Planner</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <a href="index.html" class="logo" aria-label="AI Trip Planner">
+                <img src="assets/inLogo.png" alt="AI Trip Planner Logo" class="logo-img">
+            </a>
+            <ul class="nav-links center">
+                <li><a class="nav-link" href="index.html">Home</a></li>
+                <li><a class="nav-link" href="explore.html">Explore</a></li>
+                <li><a class="nav-link" href="plan-trip.html">Plan Trip</a></li>
+                <li><a class="nav-link" href="image-predict.html">Image Predict</a></li>
+                <li><a class="nav-link" href="profile.html">Profile</a></li>
+            </ul>
+            <a id="auth-btn" class="btn small btn-secondary auth-cta">Login</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <section class="section">
+            <h2 class="section-title">Book Trip</h2>
+
+            <div id="booking-summary" class="form-container" style="margin-bottom: 1.5rem;">
+                <h3 style="margin-bottom: 0.75rem; color: var(--primary-color);">Trip Summary</h3>
+                <div id="trip-summary-content" style="color: var(--text-light);"></div>
+            </div>
+
+            <div class="form-container">
+                <form id="booking-form">
+                    <div class="form-group">
+                        <label for="userName">Full Name</label>
+                        <input type="text" id="userName" required placeholder="Your full name">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="userEmail">Email</label>
+                        <input type="email" id="userEmail" required placeholder="your@email.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="userPhone">Phone</label>
+                        <input type="tel" id="userPhone" placeholder="03XXXXXXXXX">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="userLocation">Your Location / Address</label>
+                        <input type="text" id="userLocation" required placeholder="City / Address">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="seatsBooked">Seats</label>
+                        <input type="number" id="seatsBooked" min="1" required placeholder="Number of seats">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Total Cost</label>
+                        <div id="total-cost" style="font-weight: 700; color: var(--primary-color);">PKR 0</div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Checkout</button>
+                </form>
+                <div id="booking-error" class="alert alert-error hidden" style="margin-top: 1rem;"></div>
+                <div id="booking-success" class="alert alert-success hidden" style="margin-top: 1rem;"></div>
+            </div>
+        </section>
+    </div>
+
+    <script type="module" src="js/navbar.js"></script>
+    <script type="module" src="js/booking.js"></script>
+</body>
+</html>
+
+

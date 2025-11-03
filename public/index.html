@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Trip Planner - Home</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <a href="index.html" class="logo" aria-label="AI Trip Planner">
+                <img src="assets/inLogo.png" alt="AI Trip Planner Logo" class="logo-img">
+                
+            </a>
+            <ul class="nav-links center">
+                <li><a class="nav-link" href="index.html">Home</a></li>
+                <li><a class="nav-link" href="explore.html">Explore</a></li>
+                <li><a class="nav-link" href="plan-trip.html">Plan Trip</a></li>
+                <li><a class="nav-link" href="image-predict.html">Image Predict</a></li>
+                <li><a class="nav-link" href="profile.html">Profile</a></li>
+            </ul>
+            <a id="auth-btn" class="btn small btn-secondary auth-cta">Login</a>
+        </nav>
+    </header>
+
+    <section class="hero hero-milky">
+        <div class="hero-inner">
+            <h1>Plan smarter. Travel better.</h1>
+            <p>Personalized itineraries, verified trips, and seamless bookings — all in one place.</p>
+            <div class="hero-cta">
+                <a href="plan-trip.html" class="btn btn-primary">Start AI Planning</a>
+                <a href="explore.html" class="btn btn-secondary">Explore Trips</a>
+            </div>
+        </div>
+    </section>
+
+    <div class="container">
+        <section class="section stats-section">
+            <div class="stats-grid">
+                <div class="stat-card"><div class="stat-value" id="stat-trips">Trips</div><div class="stat-label">Curated Experiences</div></div>
+                <div class="stat-card"><div class="stat-value" id="stat-cities">Cities</div><div class="stat-label">Across Pakistan</div></div>
+                <div class="stat-card"><div class="stat-value" id="stat-users">Users</div><div class="stat-label">Happy Travelers</div></div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2 class="section-title">Travel Tips</h2>
+            <div class="tips-grid" id="tips-container"></div>
+        </section>
+
+        <section class="section">
+            <h2 class="section-title">Featured Trips</h2>
+            <div class="card-grid uniform-cards" id="trips-container"></div>
+        </section>
+
+        <section class="section">
+            <h2 class="section-title">Why Choose Us</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-title">AI-Powered Plans</div>
+                    <div class="feature-text">Get day-by-day smart itineraries tailored to your budget, time and interests.</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-title">Trusted Agencies</div>
+                    <div class="feature-text">Trips are listed by verified agencies with transparent pricing and seats.</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-title">Instant Booking</div>
+                    <div class="feature-text">Reserve seats in seconds. Your bookings appear under Profile → My Bookings.</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-title">Modern UX</div>
+                    <div class="feature-text">Clean, minimal and fast experience across devices with our milky theme.</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2 class="section-title">Popular Destinations</h2>
+            <div class="chip-row">
+                <span class="chip">Islamabad</span>
+                <span class="chip">Lahore</span>
+                <span class="chip">Karachi</span>
+                <span class="chip">Hunza</span>
+                <span class="chip">Skardu</span>
+                <span class="chip">Swat</span>
+                <span class="chip">Naran</span>
+                <span class="chip">Murree</span>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="newsletter">
+                <h3 style="color: var(--primary-color); margin-bottom: .5rem;">Stay updated</h3>
+                <p style="color: var(--text-light); margin-bottom: .75rem;">Get new trips and travel tips in your inbox.</p>
+                <form onsubmit="event.preventDefault(); alert('Subscribed!');">
+                    <input type="email" placeholder="you@example.com" required>
+                    <button class="btn btn-primary" type="submit">Subscribe</button>
+                </form>
+            </div>
+        </section>
+    </div>
+
+    <footer>
+        <div class="footer-inner">
+            <div class="footer-col">
+                <img src="assets/inLogo.png" alt="AI Trip Planner" class="logo-img" style="height:28px; margin-bottom:.5rem;">
+                <p style="color:#a9c2b6;">Plan smarter, travel better. AI itineraries and verified trips.</p>
+            </div>
+            <div class="footer-col">
+                <h4>Explore</h4>
+                <a href="explore.html">Destinations</a>
+                <a href="plan-trip.html">AI Trip Planner</a>
+                <a href="profile.html">Your Profile</a>
+            </div>
+            <div class="footer-col">
+                <h4>Company</h4>
+                <a href="#">About</a>
+                <a href="#">Contact</a>
+                <a href="#">Terms</a>
+            </div>
+            <div class="footer-col">
+                <h4>Get in touch</h4>
+                <a href="#">support@aitripplanner.app</a>
+                <a href="#">+92 300 0000000</a>
+            </div>
+        </div>
+        <div class="footer-bottom">© <span id="year"></span> AI Trip Planner. All rights reserved.</div>
+    </footer>
+    <script>
+        document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
+
+    <script type="module" src="js/navbar.js"></script>
+    <script type="module" src="js/home.js"></script>
+</body>
+</html>
+

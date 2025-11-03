@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Image Prediction - AI Trip Planner</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <a href="index.html" class="logo" aria-label="AI Trip Planner">
+                <img src="assets/inLogo.png" alt="AI Trip Planner Logo" class="logo-img">
+            </a>
+            <ul class="nav-links center">
+                <li><a class="nav-link" href="index.html">Home</a></li>
+                <li><a class="nav-link" href="explore.html">Explore</a></li>
+                <li><a class="nav-link" href="plan-trip.html">Plan Trip</a></li>
+                <li><a class="nav-link" href="image-predict.html">Image Predict</a></li>
+                <li><a class="nav-link" href="profile.html">Profile</a></li>
+            </ul>
+            <a id="auth-btn" class="btn small btn-secondary auth-cta">Login</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <section class="section">
+            <h2 class="section-title">AI Image Prediction</h2>
+            <p style="text-align: center; color: var(--text-light); margin-bottom: 2rem;">
+                Upload a photo of a tourist place in Pakistan and discover information about it
+            </p>
+
+            <div class="form-container">
+                <div class="image-upload-container">
+                    <div class="upload-area" id="upload-area">
+                        <p style="font-size: 1.2rem; margin-bottom: 1rem;">📸 Upload Image</p>
+                        <p style="color: var(--text-light);">Click to browse or drag and drop</p>
+                        <input type="file" id="image-input" accept="image/*" style="display: none;">
+                    </div>
+                    
+                    <img id="preview-image" class="uploaded-image hidden" alt="Preview">
+                    
+                    <button id="predict-button" class="btn btn-primary hidden" style="width: 100%; margin-top: 1rem;">
+                        Predict Location
+                    </button>
+                </div>
+
+                <div id="prediction-result" class="hidden">
+                    <!-- Prediction results will be displayed here -->
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script type="module" src="js/navbar.js"></script>
+    <script type="module" src="js/image-predict.js"></script>
+</body>
+</html>
+

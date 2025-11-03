@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Agency - AI Trip Planner</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <a href="index.html" class="logo" aria-label="AI Trip Planner">
+                <img src="assets/inLogo.png" alt="AI Trip Planner Logo" class="logo-img">
+            </a>
+            <ul class="nav-links center">
+                <li><a class="nav-link" href="index.html">Home</a></li>
+                <li><a class="nav-link" href="explore.html">Explore</a></li>
+                <li><a class="nav-link" href="plan-trip.html">Plan Trip</a></li>
+                <li><a class="nav-link" href="image-predict.html">Image Predict</a></li>
+                <li><a class="nav-link" href="profile.html">Profile</a></li>
+            </ul>
+            <a id="auth-btn" class="btn small btn-secondary auth-cta">Login</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <section class="section">
+            <h2 class="section-title">Create Your Travel Agency</h2>
+            <p style="text-align: center; color: var(--text-light); margin-bottom: 2rem;">
+                Start offering amazing trips to travelers
+            </p>
+
+            <div class="form-container">
+                <form id="create-agency-form">
+                    <div class="form-group">
+                        <label for="agency-name">Agency Name *</label>
+                        <input type="text" id="agency-name" required placeholder="e.g., Adventure Tours Pakistan">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="agency-location">City *</label>
+                        <input type="text" id="agency-location" required placeholder="e.g., Islamabad">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="agency-email">Email *</label>
+                        <input type="email" id="agency-email" required placeholder="contact@yourgency.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="agency-phone">Phone Number *</label>
+                        <input type="tel" id="agency-phone" required placeholder="e.g., 03001234567">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="agency-description">Description / Bio *</label>
+                        <textarea id="agency-description" rows="5" required 
+                                  placeholder="Tell travelers about your agency, services, and experience..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Create Agency</button>
+                </form>
+                <div id="agency-error" class="alert alert-error hidden" style="margin-top: 1rem;"></div>
+                <div id="agency-success" class="alert alert-success hidden" style="margin-top: 1rem;"></div>
+            </div>
+        </section>
+    </div>
+
+    <script type="module" src="js/navbar.js"></script>
+    <script type="module" src="js/create-agency.js"></script>
+</body>
+</html>
+

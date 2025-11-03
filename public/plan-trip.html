@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Trip Planning - AI Trip Planner</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <a href="index.html" class="logo" aria-label="AI Trip Planner">
+                <img src="assets/inLogo.png" alt="AI Trip Planner Logo" class="logo-img">
+            </a>
+            <ul class="nav-links center">
+                <li><a class="nav-link" href="index.html">Home</a></li>
+                <li><a class="nav-link" href="explore.html">Explore</a></li>
+                <li><a class="nav-link" href="plan-trip.html">Plan Trip</a></li>
+                <li><a class="nav-link" href="image-predict.html">Image Predict</a></li>
+                <li><a class="nav-link" href="profile.html">Profile</a></li>
+            </ul>
+            <a id="auth-btn" class="btn small btn-secondary auth-cta">Login</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <section class="section">
+            <h2 class="section-title">AI Trip Planner</h2>
+            <p style="text-align: center; color: var(--text-light); margin-bottom: 1.25rem;">
+                Create a smart day-by-day itinerary tailored to your budget, dates and interests.
+            </p>
+
+            <div class="form-container">
+                <form id="trip-plan-form">
+                    <div class="form-group">
+                        <label for="destination">Destination *</label>
+                        <input type="text" id="destination" name="destination" required 
+                               placeholder="e.g., Lahore, Islamabad, Hunza">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="startDate">Start Date *</label>
+                        <input type="date" id="startDate" name="startDate" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="endDate">End Date *</label>
+                        <input type="date" id="endDate" name="endDate" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="numberOfPeople">Number of People *</label>
+                        <input type="number" id="numberOfPeople" name="numberOfPeople" 
+                               min="1" required placeholder="e.g., 2">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="budget">Budget Range *</label>
+                        <select id="budget" name="budget" required>
+                            <option value="">Select budget range</option>
+                            <option value="Under PKR 50,000">Under PKR 50,000</option>
+                            <option value="PKR 50,000 - 100,000">PKR 50,000 - 100,000</option>
+                            <option value="PKR 100,000 - 200,000">PKR 100,000 - 200,000</option>
+                            <option value="PKR 200,000 - 500,000">PKR 200,000 - 500,000</option>
+                            <option value="Above PKR 500,000">Above PKR 500,000</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="accommodationType">Accommodation Type *</label>
+                        <select id="accommodationType" name="accommodationType" required>
+                            <option value="">Select accommodation type</option>
+                            <option value="Hotel">Hotel</option>
+                            <option value="Guest House">Guest House</option>
+                            <option value="Camping">Camping</option>
+                            <option value="Hostel">Hostel</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Preferences *</label>
+                        <div class="checkbox-group">
+                            <label>
+                                <input type="checkbox" name="preferences" value="Adventure">
+                                Adventure
+                            </label>
+                            <label>
+                                <input type="checkbox" name="preferences" value="Culture">
+                                Culture
+                            </label>
+                            <label>
+                                <input type="checkbox" name="preferences" value="Relaxation">
+                                Relaxation
+                            </label>
+                            <label>
+                                <input type="checkbox" name="preferences" value="Nature">
+                                Nature
+                            </label>
+                            <label>
+                                <input type="checkbox" name="preferences" value="Food">
+                                Food
+                            </label>
+                            <label>
+                                <input type="checkbox" name="preferences" value="History">
+                                History
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="specialRequirements">Special Requirements</label>
+                        <textarea id="specialRequirements" name="specialRequirements" 
+                                  placeholder="Any special requirements or preferences..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">
+                        Generate Plan
+                    </button>
+                </form>
+            </div>
+
+            <div id="plan-result" class="hidden">
+                <!-- Generated plan will be displayed here -->
+            </div>
+        </section>
+    </div>
+
+    <script type="module" src="js/navbar.js"></script>
+    <script type="module" src="js/plan-trip.js"></script>
+</body>
+</html>
+

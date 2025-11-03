@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - AI Trip Planner</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <a href="index.html" class="logo" aria-label="AI Trip Planner">
+                <img src="assets/inLogo.png" alt="AI Trip Planner Logo" class="logo-img">
+            </a>
+            <ul class="nav-links center">
+                <li><a class="nav-link" href="index.html">Home</a></li>
+                <li><a class="nav-link" href="explore.html">Explore</a></li>
+                <li><a class="nav-link" href="plan-trip.html">Plan Trip</a></li>
+                <li><a class="nav-link" href="image-predict.html">Image Predict</a></li>
+            </ul>
+            <a id="auth-btn" class="btn small btn-secondary auth-cta">Login</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <!-- ====================  AUTH SECTION  ==================== -->
+        <div id="auth-section">
+            <div class="form-container">
+                <div id="auth-tabs" style="display:flex;gap:1rem;margin-bottom:2rem;border-bottom:2px solid #eee;">
+                    <button class="auth-tab active" data-tab="login">Login</button>
+                    <button class="auth-tab" data-tab="signup">Sign Up</button>
+                </div>
+
+                <!-- Login Form -->
+                <div id="login-form" class="auth-form">
+                    <h2 style="color:var(--primary-color);margin-bottom:1.5rem;">Welcome Back</h2>
+                    <form id="login-form-element">
+                        <div class="form-group">
+                            <label for="login-email">Email</label>
+                            <input type="email" id="login-email" autocomplete="username" required placeholder="your@email.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="login-password">Password</label>
+                            <input type="password" id="login-password" autocomplete="current-password" required placeholder="Enter your password">
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width:100%;">Login</button>
+                    </form>
+                    <div id="login-error" class="alert alert-error hidden" style="margin-top:1rem;"></div>
+                </div>
+
+                <!-- Signup Form -->
+                <div id="signup-form" class="auth-form hidden">
+                    <h2 style="color:var(--primary-color);margin-bottom:1.5rem;">Create Account</h2>
+                    <form id="signup-form-element">
+                        <div class="form-group">
+                            <label for="signup-name">Full Name</label>
+                            <input type="text" id="signup-name" required placeholder="Your full name">
+                        </div>
+                        <div class="form-group">
+                            <label for="signup-email">Email</label>
+                            <input type="email" id="signup-email" autocomplete="username" required placeholder="your@email.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="signup-password">Password</label>
+                            <input type="password" id="signup-password" autocomplete="new-password" required placeholder="Minimum 6 characters" minlength="6">
+                        </div>
+                        <div class="form-group">
+                            <label for="signup-confirm-password">Confirm Password</label>
+                            <input type="password" id="signup-confirm-password" autocomplete="new-password" required placeholder="Re-enter your password">
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width:100%;">Sign Up</button>
+                    </form>
+                    <div id="signup-error" class="alert alert-error hidden" style="margin-top:1rem;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====================  PROFILE SECTION  ==================== -->
+        <div id="profile-section" class="hidden">
+            <div class="profile-layout">
+                <aside>
+                    <div class="profile-header profile-card">
+                        <img id="profile-avatar" src="https://via.placeholder.com/120" alt="Profile" class="profile-avatar">
+                        <h2 id="profile-name">User Name</h2>
+                        <p id="profile-email" style="color:var(--text-light)">user@email.com</p>
+                        <div class="profile-actions" style="margin-top:.75rem;">
+                            <button class="btn btn-secondary" id="edit-profile-btn">Edit Profile</button>
+                            <button class="btn btn-secondary" id="create-agency-btn">Create Agency</button>
+                            <button class="btn btn-secondary" id="agency-dashboard-btn">My Agency Dashboard</button>
+                            <button class="btn btn-secondary" id="logout-btn">Logout</button>
+                        </div>
+                    </div>
+                    <div class="profile-info" style="margin-top:1rem;">
+                        <div class="info-row"><span class="info-label">City</span><span class="info-value" id="profile-city">-</span></div>
+                        <div class="info-row"><span class="info-label">Phone</span><span class="info-value" id="profile-phone">-</span></div>
+                        <div class="info-row"><span class="info-label">Bio</span><span class="info-value" id="profile-bio">-</span></div>
+                    </div>
+                </aside>
+
+                <main>
+                    <!-- ***** EDIT PROFILE FORM (only ONE) ***** -->
+                    <div id="edit-profile-form" class="form-container hidden" style="margin-bottom:1rem;">
+                        <h3 style="color:var(--primary-color);margin-bottom:1rem;">Edit Profile</h3>
+                        <form id="update-profile-form">
+                            <div class="form-group">
+                                <label for="edit-name">Name</label>
+                                <input type="text" id="edit-name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-email">Email</label>
+                                <input type="email" id="edit-email" autocomplete="email" required readonly style="background:#f5f5f5;">
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-city">City</label>
+                                <input type="text" id="edit-city" placeholder="e.g., Islamabad">
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-phone">Phone</label>
+                                <input type="tel" id="edit-phone" placeholder="e.g., 03001234567">
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-bio">Bio</label>
+                                <textarea id="edit-bio" rows="4" placeholder="Tell us about yourself..."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-image-url">Profile Image URL</label>
+                                <input type="url" id="edit-image-url" placeholder="https://example.com/image.jpg">
+                            </div>
+                            <button type="submit" class="btn btn-primary" style="width:100%;">Update Profile</button>
+                            <button type="button" class="btn btn-secondary" id="cancel-edit-btn" style="width:100%;margin-top:.5rem;">Cancel</button>
+                        </form>
+                        <div id="update-error" class="alert alert-error hidden" style="margin-top:1rem;"></div>
+                    </div>
+
+                    <!-- Saved Plans -->
+                    <section class="section" style="padding-top:0;">
+                        <h2 class="section-title">Saved Trip Plans</h2>
+                        <div id="saved-plans-container">
+                            <div class="loading"><div class="spinner"></div><p>Loading saved plans...</p></div>
+                        </div>
+                    </section>
+
+                    <!-- My Bookings -->
+                    <section class="section" style="padding-top:0;">
+                        <h2 class="section-title">My Bookings</h2>
+                        <div id="my-bookings-container">
+                            <div class="loading"><div class="spinner"></div><p>Loading bookings...</p></div>
+                        </div>
+                    </section>
+                </main>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="js/navbar.js"></script>
+    <script type="module" src="js/profile.js"></script>
+</body>
+</html>

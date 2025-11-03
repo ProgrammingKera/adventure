@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Explore Destinations - AI Trip Planner</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <a href="index.html" class="logo" aria-label="AI Trip Planner">
+                <img src="assets/inLogo.png" alt="AI Trip Planner Logo" class="logo-img">
+            </a>
+            <ul class="nav-links center">
+                <li><a class="nav-link" href="index.html">Home</a></li>
+                <li><a class="nav-link" href="explore.html">Explore</a></li>
+                <li><a class="nav-link" href="plan-trip.html">Plan Trip</a></li>
+                <li><a class="nav-link" href="image-predict.html">Image Predict</a></li>
+                <li><a class="nav-link" href="profile.html">Profile</a></li>
+            </ul>
+            <a id="auth-btn" class="btn small btn-secondary auth-cta">Login</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <section class="section">
+            <h2 class="section-title">Explore Destinations</h2>
+            <div class="explore-layout">
+                <aside class="city-panel">
+                    <div id="cities-container" class="city-grid">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            <p>Loading destinations...</p>
+                        </div>
+                    </div>
+                </aside>
+                <main class="trips-panel">
+                    <div id="city-title" class="section-title" style="margin-top:0; font-size:1.5rem;">Trips</div>
+                    <div id="city-trips" class="card-grid uniform-cards"></div>
+                </main>
+            </div>
+        </section>
+    </div>
+
+    <script type="module" src="js/navbar.js"></script>
+    <script type="module" src="js/explore.js"></script>
+</body>
+</html>
+
