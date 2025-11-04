@@ -1,7 +1,5 @@
 import { db, auth } from '../firebase.js';
-import { 
-    signInWithEmailAndPassword, 
-    createUserWithEmailAndPassword,
+import {
     signOut,
     onAuthStateChanged,
     updateProfile as updateAuthProfile
@@ -18,126 +16,6 @@ import {
     serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
-// Wait for DOM to be ready
-function initProfileHandlers() {
-    // Tab switching (Login / Sign Up)
-    const tabs = document.querySelectorAll('.auth-tab');
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            const tabName = tab.dataset.tab;
-            
-            document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            
-            document.querySelectorAll('.auth-form').forEach(f => f.classList.add('hidden'));
-            
-            if (tabName === 'login') {
-                document.getElementById('login-form').classList.remove('hidden');
-            } else {
-                document.getElementById('signup-form').classList.remove('hidden');
-            }
-        });
-    });
-
-    // Login Form
-    const loginForm = document.getElementById('login-form-element');
-    if (loginForm) {
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const errorDiv = document.getElementById('login-error');
-            errorDiv.classList.add('hidden');
-            
-            const email = document.getElementById('login-email').value.trim();
-            const password = document.getElementById('login-password').value;
-            
-            try {
-                await signInWithEmailAndPassword(auth, email, password);
-                errorDiv.classList.add('hidden');
-            } catch (error) {
-                console.error('Login error:', error);
-                errorDiv.textContent = getFirebaseErrorMessage(error) || 'Failed to login. Please check your credentials.';
-                errorDiv.classList.remove('hidden');
-            }
-        });
-    }
-
-    // Signup Form
-    const signupForm = document.getElementById('signup-form-element');
-    if (signupForm) {
-        signupForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const errorDiv = document.getElementById('signup-error');
-            errorDiv.classList.add('hidden');
-            
-            const name = document.getElementById('signup-name').value.trim();
-            const email = document.getElementById('signup-email').value.trim();
-            const password = document.getElementById('signup-password').value;
-            const confirmPassword = document.getElementById('signup-confirm-password').value;
-            
-            if (password !== confirmPassword) {
-                errorDiv.textContent = 'Passwords do not match';
-                errorDiv.classList.remove('hidden');
-                return;
-            }
-            
-            if (password.length < 6) {
-                errorDiv.textContent = 'Password must be at least 6 characters';
-                errorDiv.classList.remove('hidden');
-                return;
-            }
-            
-            try {
-                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                await updateAuthProfile(userCredential.user, { displayName: name });
-                
-                // Create user document in Firestore
-                const userDoc = {
-                    id: userCredential.user.uid,
-                    name: name,
-                    email: email,
-                    imageUrl: null,
-                    phone: null,
-                    bio: null,
-                    city: null,
-                    userType: 'USER',
-                    createdAt: serverTimestamp()
-                };
-                
-                await setDoc(doc(db, 'users', userCredential.user.uid), userDoc);
-                errorDiv.classList.add('hidden');
-            } catch (error) {
-                console.error('Signup error:', error);
-                errorDiv.textContent = getFirebaseErrorMessage(error) || 'Failed to create account. Please try again.';
-                errorDiv.classList.remove('hidden');
-            }
-        });
-    }
-}
-
-// Helper: Convert Firebase error codes to user-friendly messages
-function getFirebaseErrorMessage(error) {
-    const code = error.code;
-    switch (code) {
-        case 'auth/email-already-in-use':
-            return 'This email is already registered. Please log in.';
-        case 'auth/weak-password':
-            return 'Password is too weak.';
-        case 'auth/invalid-email':
-            return 'Please enter a valid email address.';
-        case 'auth/user-not-found':
-        case 'auth/wrong-password':
-            return 'Invalid email or password.';
-        default:
-            return null;
-    }
-}
-
-// Initialize auth handlers when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initProfileHandlers);
-} else {
-    initProfileHandlers();
-}
 
 // Logout
 document.getElementById('logout-btn')?.addEventListener('click', async () => {
@@ -406,16 +284,16 @@ document.getElementById('agency-dashboard-btn')?.addEventListener('click', () =>
 });
 
 // Auth State Listener
+let authCheckComplete = false;
+
 onAuthStateChanged(auth, (user) => {
-    const authSection = document.getElementById('auth-section');
-    const profileSection = document.getElementById('profile-section');
-    
-    if (user) {
-        authSection.classList.add('hidden');
-        profileSection.classList.remove('hidden');
-        loadUserProfile();
-    } else {
-        authSection.classList.remove('hidden');
-        profileSection.classList.add('hidden');
+    if (!authCheckComplete) {
+        authCheckComplete = true;
+
+        if (user) {
+            loadUserProfile();
+        } else {
+            window.location.href = 'login.html';
+        }
     }
 });

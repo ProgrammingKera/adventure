@@ -23,7 +23,7 @@ function initNavbarAuth() {
             authBtn.classList.remove('btn-secondary');
             authBtn.classList.add('btn-secondary');
             authBtn.onclick = () => {
-                window.location.href = 'profile.html';
+                window.location.href = 'login.html';
             };
         }
     });

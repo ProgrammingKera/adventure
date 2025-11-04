@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - AI Trip Planner</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="auth-page">
+        <div class="auth-container">
+            <div class="auth-left">
+                <div class="auth-branding">
+                    <a href="index.html">
+                        <img src="assets/inLogo.png" alt="AI Trip Planner" class="auth-logo">
+                    </a>
+                    <h1>Welcome Back</h1>
+                    <p>Sign in to continue your journey</p>
+                </div>
+                <div class="auth-image">
+                    <img src="assets/man.png" alt="Travel">
+                </div>
+            </div>
+
+            <div class="auth-right">
+                <div class="auth-form-wrapper">
+                    <h2>Login to Your Account</h2>
+                    <p class="auth-subtitle">Enter your credentials to access your account</p>
+
+                    <form id="login-form-element">
+                        <div class="form-group">
+                            <label for="login-email">Email Address</label>
+                            <input type="email" id="login-email" autocomplete="username" required placeholder="you@example.com">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="login-password">Password</label>
+                            <input type="password" id="login-password" autocomplete="current-password" required placeholder="Enter your password">
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" style="width:100%;">Sign In</button>
+                    </form>
+
+                    <div id="login-error" class="alert alert-error hidden" style="margin-top:1rem;"></div>
+
+                    <p class="auth-switch">
+                        Don't have an account? <a href="signup.html">Sign up here</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="js/login.js"></script>
+</body>
+</html>
