@@ -148,7 +148,14 @@ async function loadTrips(agencyId) {
                         const parsed = getTripDate(data);
                         if (parsed) {
                             updates.date = Timestamp.fromDate(parsed);
+                            updates.dateTimestamp = parsed.getTime();
                         }
+                    }
+
+                    // Add dateTimestamp if missing (for existing Timestamp dates)
+                    if (data && data.date?.toDate && !data.dateTimestamp) {
+                        const dateObj = data.date.toDate();
+                        updates.dateTimestamp = dateObj.getTime();
                     }
 
                     // Ensure location fields exist
@@ -261,6 +268,9 @@ document.getElementById('trip-form').addEventListener('submit', async (e) => {
     const dateInput = document.getElementById('trip-date').value; // YYYY-MM-DD
     const dateObj = dateInput ? new Date(dateInput + 'T00:00:00') : null;
 
+    // Create Timestamp for Firestore
+    const firestoreTimestamp = dateObj ? Timestamp.fromDate(dateObj) : null;
+
     const tripData = {
         agencyId: currentAgencyId,
         description: document.getElementById('trip-description').value.trim(),
@@ -269,7 +279,8 @@ document.getElementById('trip-form').addEventListener('submit', async (e) => {
         city: document.getElementById('trip-location').value.trim(),
         cityLower: document.getElementById('trip-location').value.trim().toLowerCase(),
         imageUrl: document.getElementById('trip-image-url').value.trim(),
-        date: dateObj ? Timestamp.fromDate(dateObj) : null, // Firestore Timestamp for mobile compatibility
+        date: firestoreTimestamp, // Firestore Timestamp for mobile compatibility
+        dateTimestamp: dateObj ? dateObj.getTime() : null, // Milliseconds timestamp for mobile queries
         departure: document.getElementById('trip-departure').value.trim(),
         totalSeats: parseInt(document.getElementById('trip-total-seats').value),
         pricePerSeat: parseInt(document.getElementById('trip-price').value),

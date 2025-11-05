@@ -57,7 +57,14 @@ async function loadDestinations() {
                         const parsed = parseTripDate(data.date);
                         if (parsed) {
                             updates.date = Timestamp.fromDate(parsed);
+                            updates.dateTimestamp = parsed.getTime();
                         }
+                    }
+
+                    // Add dateTimestamp if missing (for existing Timestamp dates)
+                    if (data && data.date?.toDate && !data.dateTimestamp) {
+                        const dateObj = data.date.toDate();
+                        updates.dateTimestamp = dateObj.getTime();
                     }
 
                     // Ensure location fields for mobile compatibility
