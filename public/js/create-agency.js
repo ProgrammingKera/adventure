@@ -95,12 +95,12 @@ document.getElementById('create-agency-form').addEventListener('submit', async (
         const agencyQuery = await getDocs(query(collection(db, 'agencies'), where('ownerId', '==', user.uid)));
         const agencyId = agencyQuery.docs[0].id;
         
-        // Update user document to set userType to AGENCY
+        // Upsert user document to set userType to AGENCY (create if missing)
         const userDocRef = doc(db, 'users', user.uid);
-        await updateDoc(userDocRef, {
+        await setDoc(userDocRef, {
             userType: 'AGENCY',
             agencyId: agencyId
-        });
+        }, { merge: true });
         
         successDiv.innerHTML = `
             <h3>Agency created successfully! 🎉</h3>

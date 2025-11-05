@@ -48,51 +48,94 @@ async function loadFeaturedTrips() {
             return;
         }
         
-        // Sort trips by date (most recent first) and limit to 6
+        // Helper: parse stored trip date to Date object
+        const parseTripDate = (dateVal) => {
+            if (!dateVal) return null;
+            if (typeof dateVal?.toDate === 'function') return dateVal.toDate();
+            const tryNative = (s) => {
+                const d = new Date(s);
+                return isNaN(d.getTime()) ? null : d;
+            };
+            if (typeof dateVal === 'string') {
+                // 1) Strip trailing UTC offset like " UTC+5"
+                let s = dateVal.replace(/\sUTC[+-]\d+$/i, '').trim();
+                // 2) Try native parse first
+                let d = tryNative(s);
+                if (d) return d;
+                // 3) Handle formats like "December 5, 2025, 05:00:00 PM" or with "at"
+                s = s.replace(/\sat\s/i, ' ').replace(/,/g, ' ').replace(/\s+/g, ' ').trim();
+                // Extract MonthName Day Year optionally followed by time
+                const monthNames = {
+                    january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
+                    july: 6, august: 7, september: 8, october: 9, november: 10, december: 11
+                };
+                const m = s.match(/^(\w+)\s(\d{1,2})\s(\d{4})(?:\s(\d{1,2}):(\d{2})(?::(\d{2}))?\s?(AM|PM)?)?$/i);
+                if (m) {
+                    const mon = monthNames[m[1].toLowerCase()];
+                    const day = parseInt(m[2]);
+                    const year = parseInt(m[3]);
+                    let hours = 0, minutes = 0, seconds = 0;
+                    if (m[4] && m[5]) {
+                        hours = parseInt(m[4]);
+                        minutes = parseInt(m[5]);
+                        seconds = m[6] ? parseInt(m[6]) : 0;
+                        const ampm = (m[7] || '').toUpperCase();
+                        if (ampm === 'PM' && hours < 12) hours += 12;
+                        if (ampm === 'AM' && hours === 12) hours = 0;
+                    }
+                    const built = new Date(year, mon, day, hours, minutes, seconds);
+                    return isNaN(built.getTime()) ? null : built;
+                }
+                return null;
+            }
+            const d = new Date(dateVal);
+            return isNaN(d.getTime()) ? null : d;
+        };
+
+        const now = new Date();
+
+        // Keep only upcoming/valid trips, sort by soonest date, then limit to 6
         const sortedDocs = querySnapshot.docs
+            .filter(doc => {
+                const d = parseTripDate(doc.data().date);
+                return d && d >= new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            })
             .sort((a, b) => {
-                const dateA = a.data().date || '';
-                const dateB = b.data().date || '';
-                
-                // Ensure both are strings before comparing
-                const dateAStr = typeof dateA === 'string' ? dateA : String(dateA || '');
-                const dateBStr = typeof dateB === 'string' ? dateB : String(dateB || '');
-                
-                // If dates are empty, put them at the end
-                if (!dateAStr && !dateBStr) return 0;
-                if (!dateAStr) return 1;
-                if (!dateBStr) return -1;
-                
-                // Compare strings (most recent first)
-                return dateBStr.localeCompare(dateAStr);
+                const da = parseTripDate(a.data().date) || new Date(8640000000000000);
+                const db = parseTripDate(b.data().date) || new Date(8640000000000000);
+                return da.getTime() - db.getTime(); // earliest first
             })
             .slice(0, 6);
         
         tripsContainer.innerHTML = sortedDocs.map(doc => {
             const trip = doc.data();
-            const availableSeats = (trip.totalSeats || 0) - (trip.bookedSeats || 0);
-            
+            const availableSeats = Math.max(0, (trip.totalSeats || 0) - (trip.bookedSeats || 0));
+            const dateObj = parseTripDate(trip.date);
+            const dateDisplay = dateObj ? dateObj.toLocaleDateString() : 'N/A';
+            const priceStr = `PKR ${Number(trip.pricePerSeat || 0).toLocaleString()} / seat`;
+            const titleLocation = trip.location || 'N/A';
+            const subtitle = trip.description || '';
+            const departure = trip.departure || 'N/A';
+
             return `
                 <div class="card">
-                    ${trip.imageUrl ? `<img src="${trip.imageUrl}" alt="${trip.description || 'Trip'}" class="card-image">` : ''}
+                    ${trip.imageUrl ? `<img src="${trip.imageUrl}" alt="${subtitle || 'Trip'}" class="card-image">` : ''}
                     <div class="card-content">
-                        <h3 class="card-title">${trip.description || 'Trip'}</h3>
-                        <div class="card-text"><strong>Location:</strong> ${trip.location || 'N/A'}</div>
-                        <div class="card-text"><strong>Departure:</strong> ${trip.departure || 'N/A'}</div>
-                        <div class="card-meta">
-                            <span><strong>Seats:</strong> ${availableSeats} available</span>
-                            <span><strong>Date:</strong> ${trip.date ? (typeof trip.date === 'string' ? trip.date.split(' at ')[0] : new Date(trip.date).toLocaleDateString()) : 'N/A'}</span>
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap: .75rem;">
+                            <h3 class="card-title" style="margin:0;">${titleLocation}</h3>
+                            <div class="card-price" style="white-space:nowrap;">${priceStr.replace(' / seat','')} <span style="color:#6c757d; font-weight:500;">/ seat</span></div>
                         </div>
-                        <div style="display:flex; justify-content: space-between; align-items:center; margin-top: .5rem;">
-                            <div class="card-price">PKR ${trip.pricePerSeat || 0} / seat</div>
+                        ${subtitle ? `<div class="card-text" style="margin-top:.35rem;">${subtitle}</div>` : ''}
+                        <div class="card-meta" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:.5rem; margin-top:.5rem;">
+                            <div><strong>Departure:</strong> ${departure}</div>
+                            <div><strong>Seats:</strong> ${availableSeats} available</div>
+                            <div><strong>Date:</strong> ${dateDisplay}</div>
+                        </div>
+                        <div style="display:flex; justify-content:flex-end; align-items:center; margin-top: .75rem;">
                             ${availableSeats > 0 ? `
-                                <a class="btn btn-primary" style="min-width: 140px;" href="booking.html?tripId=${doc.id}">
-                                    Book Now
-                                </a>
+                                <a class="btn btn-primary" style="min-width: 140px;" href="booking.html?tripId=${doc.id}">Book Now</a>
                             ` : `
-                                <button class="btn btn-secondary" disabled>
-                                    Sold Out
-                                </button>
+                                <button class="btn btn-secondary" disabled>Sold Out</button>
                             `}
                         </div>
                     </div>

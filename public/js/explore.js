@@ -1,9 +1,27 @@
 import { db, auth } from '../firebase.js';
-import { collection, getDocs, query, where, doc, getDoc, updateDoc, increment, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { collection, getDocs, query, where, doc, getDoc, updateDoc, increment, addDoc, serverTimestamp, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
 // Popular cities in Pakistan
 const cities = ['Islamabad', 'Lahore', 'Karachi', 'Hunza', 'Skardu', 'Swat', 'Naran', 'Murree'];
+
+// Shared date parser for both loaders and renderers
+function parseTripDate(dateVal) {
+    if (!dateVal) return null;
+    if (typeof dateVal?.toDate === 'function') return dateVal.toDate();
+    if (typeof dateVal === 'string') {
+        let s = dateVal
+            .replace(/\sUTC[+-]\d+$/i, ' ')
+            .replace(/\sat\s/i, ' ')
+            .replace(/,/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+        const d = new Date(s);
+        return isNaN(d.getTime()) ? null : d;
+    }
+    const d = new Date(dateVal);
+    return isNaN(d.getTime()) ? null : d;
+}
 
 // Load all trips and group by city
 async function loadDestinations() {
@@ -24,20 +42,41 @@ async function loadDestinations() {
             agenciesMap[doc.id] = agency;
         });
         
+        const today = new Date();
+        const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+        // Background-migrate: if legacy string dates exist, add parallel Timestamp field without overwriting
+        (async () => {
+            try {
+                await Promise.all(tripsSnapshot.docs.map(async (d) => {
+                    const data = d.data();
+                    if (data && typeof data.date === 'string' && !data.dateTs) {
+                        const parsed = parseTripDate(data.date);
+                        if (parsed) {
+                            try { await updateDoc(doc(db, 'trips', d.id), { dateTs: Timestamp.fromDate(parsed) }); } catch (_) {}
+                        }
+                    }
+                }));
+            } catch (_) {}
+        })();
+
         // Group trips by location
         const tripsByCity = {};
         
         tripsSnapshot.forEach(doc => {
             const trip = doc.data();
-            const location = trip.location || 'Other';
-            
-            if (!tripsByCity[location]) {
-                tripsByCity[location] = [];
+            const rawLocation = trip.location || 'Other';
+            const displayLocation = String(rawLocation).trim();
+            const d = parseTripDate(trip.date);
+
+            if (!tripsByCity[displayLocation]) {
+                tripsByCity[displayLocation] = [];
             }
-            
-            tripsByCity[location].push({
+
+            tripsByCity[displayLocation].push({
                 id: doc.id,
                 ...trip,
+                _parsedDate: d, // attach parsed date for sorting
                 agency: agenciesMap[trip.agencyId]
             });
         });
@@ -90,8 +129,29 @@ function renderCityTrips(city, trips) {
         container.innerHTML = '<p style="color: var(--text-light);">No trips for this city yet.</p>';
         return;
     }
-    container.innerHTML = trips.map(trip => {
-        const availableSeats = (trip.totalSeats || 0) - (trip.bookedSeats || 0);
+    // Sort: upcoming first (earliest to latest), then past (latest to earliest), then undated
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const getDate = (t) => t._parsedDate ?? parseTripDate(t.date);
+    const sorted = [...trips].sort((a, b) => {
+        const da = a.dateTs?.toDate ? a.dateTs.toDate() : getDate(a);
+        const db = b.dateTs?.toDate ? b.dateTs.toDate() : getDate(b);
+        const group = (d) => (d ? (d >= startOfToday ? 0 : 1) : 2);
+        const ga = group(da);
+        const gb = group(db);
+        if (ga !== gb) return ga - gb;
+        if (!da && !db) return 0;
+        if (!da) return 1;
+        if (!db) return -1;
+        // Upcoming: earlier first; Past: later first
+        return ga === 0 ? da - db : db - da;
+    });
+
+    container.innerHTML = sorted.map(trip => {
+        const availableSeats = Math.max(0, (trip.totalSeats || 0) - (trip.bookedSeats || 0));
+        const d = parseTripDate(trip.date);
+        const dateDisplay = d ? d.toLocaleDateString() : 'N/A';
+        const priceStr = `PKR ${Number(trip.pricePerSeat || 0).toLocaleString()} / seat`;
         return `
             <div class="card">
                 ${trip.imageUrl ? `<img src="${trip.imageUrl}" alt="${trip.description || 'Trip'}" class="card-image">` : ''}
@@ -101,18 +161,14 @@ function renderCityTrips(city, trips) {
                     <div class="card-text"><strong>Departure:</strong> ${trip.departure || 'N/A'}</div>
                     <div class="card-meta">
                         <span><strong>Seats:</strong> ${availableSeats}/${trip.totalSeats || 0}</span>
-                        <span><strong>Date:</strong> ${trip.date ? (typeof trip.date === 'string' ? trip.date.split(' at ')[0] : new Date(trip.date).toLocaleDateString()) : 'N/A'}</span>
+                        <span><strong>Date:</strong> ${dateDisplay}</span>
                     </div>
                     <div style="display:flex; justify-content: space-between; align-items:center; margin-top: .5rem;">
-                        <div class="card-price">PKR ${trip.pricePerSeat || 0} / seat</div>
+                        <div class="card-price">${priceStr}</div>
                         ${availableSeats > 0 ? `
-                            <a class="btn btn-primary" style="min-width: 140px;" href="booking.html?tripId=${trip.id}">
-                                Book Now
-                            </a>
+                            <a class="btn btn-primary" style="min-width: 140px;" href="booking.html?tripId=${trip.id}">Book Now</a>
                         ` : `
-                            <button class="btn btn-secondary" disabled>
-                                Sold Out
-                            </button>
+                            <button class="btn btn-secondary" disabled>Sold Out</button>
                         `}
                     </div>
                 </div>
@@ -196,7 +252,9 @@ window.bookTrip = async function(tripId) {
 onAuthStateChanged(auth, (user) => {
     if (user) {
         const profileLink = document.getElementById('profile-link');
-        profileLink.textContent = 'Profile';
+        if (profileLink) {
+            profileLink.textContent = 'Profile';
+        }
     }
 });
 

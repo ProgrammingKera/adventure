@@ -1,10 +1,11 @@
-import { auth } from '../firebase.js';
+import { db, auth } from '../firebase.js';
 import { signInWithEmailAndPassword, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import { collection, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
-onAuthStateChanged(auth, (user) => {
-    if (user) {
-        window.location.href = 'profile.html';
-    }
+onAuthStateChanged(auth, async (user) => {
+	if (user) {
+		await redirectAfterLogin(user.uid);
+	}
 });
 
 document.getElementById('login-form-element').addEventListener('submit', async (e) => {
@@ -16,8 +17,8 @@ document.getElementById('login-form-element').addEventListener('submit', async (
     const password = document.getElementById('login-password').value;
 
     try {
-        await signInWithEmailAndPassword(auth, email, password);
-        window.location.href = 'profile.html';
+		const cred = await signInWithEmailAndPassword(auth, email, password);
+		await redirectAfterLogin(cred.user.uid);
     } catch (error) {
         console.error('Login error:', error);
         errorDiv.textContent = getFirebaseErrorMessage(error) || 'Failed to login. Please check your credentials.';
@@ -41,4 +42,20 @@ function getFirebaseErrorMessage(error) {
         default:
             return null;
     }
+}
+
+async function redirectAfterLogin(userId) {
+	try {
+		const agenciesRef = collection(db, 'agencies');
+		const q = query(agenciesRef, where('ownerId', '==', userId));
+		const snapshot = await getDocs(q);
+		if (!snapshot.empty) {
+			window.location.href = 'agency-dashboard.html';
+			return;
+		}
+		window.location.href = 'create-agency.html';
+	} catch (e) {
+		console.error('Redirect error:', e);
+		window.location.href = 'profile.html';
+	}
 }

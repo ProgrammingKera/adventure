@@ -81,47 +81,72 @@ async function loadUserProfile() {
     if (!user) return;
     
     try {
+        // Default state: show Create, hide Dashboard (avoid flash)
+        const defaultCreateBtn = document.getElementById('create-agency-btn');
+        const defaultDashboardBtn = document.getElementById('agency-dashboard-btn');
+        defaultCreateBtn?.classList.remove('hidden');
+        defaultDashboardBtn?.classList.add('hidden');
+
         const userDocRef = doc(db, 'users', user.uid);
         const userDocSnap = await getDoc(userDocRef);
-        
-        if (userDocSnap.exists()) {
-            const userData = userDocSnap.data();
-            
-            // Update profile display
-            document.getElementById('profile-name').textContent = userData.name || user.displayName || 'User';
-            document.getElementById('profile-email').textContent = userData.email || user.email || '-';
-            document.getElementById('profile-city').textContent = userData.city || '-';
-            document.getElementById('profile-phone').textContent = userData.phone || '-';
-            document.getElementById('profile-bio').textContent = userData.bio || '-';
-            
-            const avatar = document.getElementById('profile-avatar');
-            if (userData.imageUrl) {
-                avatar.src = userData.imageUrl;
-            } else {
-                avatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name || 'User')}&background=006734&color=fff&size=120`;
+
+        // Build user data source (fallback to auth info if Firestore doc missing)
+        let userData = userDocSnap.exists() ? userDocSnap.data() : {
+            id: user.uid,
+            name: user.displayName || 'User',
+            email: user.email || '',
+            imageUrl: null,
+            phone: null,
+            bio: null,
+            city: null,
+            userType: 'USER'
+        };
+
+        // If doc missing, upsert a minimal user document so subsequent features work
+        if (!userDocSnap.exists()) {
+            try {
+                await setDoc(userDocRef, userData, { merge: true });
+            } catch (e) {
+                console.warn('Could not upsert minimal user profile:', e);
             }
-            
-            // Populate edit form
-            document.getElementById('edit-name').value = userData.name || '';
-            document.getElementById('edit-email').value = userData.email || user.email || '';
-            document.getElementById('edit-city').value = userData.city || '';
-            document.getElementById('edit-phone').value = userData.phone || '';
-            document.getElementById('edit-bio').value = userData.bio || '';
-            document.getElementById('edit-image-url').value = userData.imageUrl || '';
-            
-            // Check if user owns an agency
-            const agenciesRef = collection(db, 'agencies');
-            const q = query(agenciesRef, where('ownerId', '==', user.uid));
-            const querySnapshot = await getDocs(q);
-            
-            const agencyBtn = document.getElementById('create-agency-btn');
-            if (!querySnapshot.empty && agencyBtn) {
-                agencyBtn.textContent = 'View My Agency';
-                agencyBtn.onclick = () => window.location.href = 'agency-dashboard.html';
-            } else if (agencyBtn) {
-                agencyBtn.textContent = 'Create Agency';
-                agencyBtn.onclick = () => window.location.href = 'create-agency.html';
-            }
+        }
+
+        // Update profile display
+        document.getElementById('profile-name').textContent = userData.name || user.displayName || 'User';
+        document.getElementById('profile-email').textContent = userData.email || user.email || '-';
+        document.getElementById('profile-city').textContent = userData.city || '-';
+        document.getElementById('profile-phone').textContent = userData.phone || '-';
+        document.getElementById('profile-bio').textContent = userData.bio || '-';
+
+        const avatar = document.getElementById('profile-avatar');
+        if (userData.imageUrl) {
+            avatar.src = userData.imageUrl;
+        } else {
+            avatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name || 'User')}&background=006734&color=fff&size=120`;
+        }
+
+        // Populate edit form
+        document.getElementById('edit-name').value = userData.name || '';
+        document.getElementById('edit-email').value = userData.email || user.email || '';
+        document.getElementById('edit-city').value = userData.city || '';
+        document.getElementById('edit-phone').value = userData.phone || '';
+        document.getElementById('edit-bio').value = userData.bio || '';
+        document.getElementById('edit-image-url').value = userData.imageUrl || '';
+
+        // Check if user owns an agency and toggle buttons accordingly
+        const agenciesRef = collection(db, 'agencies');
+        const q = query(agenciesRef, where('ownerId', '==', user.uid));
+        const querySnapshot = await getDocs(q);
+
+        const createAgencyBtn = document.getElementById('create-agency-btn');
+        const agencyDashboardBtn = document.getElementById('agency-dashboard-btn');
+
+        if (!querySnapshot.empty) {
+            agencyDashboardBtn?.classList.remove('hidden');
+            createAgencyBtn?.classList.add('hidden');
+        } else {
+            createAgencyBtn?.classList.remove('hidden');
+            agencyDashboardBtn?.classList.add('hidden');
         }
         
         await loadSavedPlans();
