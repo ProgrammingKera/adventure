@@ -7,6 +7,7 @@ import {
     getDocs,
     addDoc,
     doc,
+    setDoc,
     updateDoc,
     serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
@@ -48,25 +49,25 @@ async function checkExistingAgency(userId) {
 
 document.getElementById('create-agency-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    
+
     const user = auth.currentUser;
     if (!user) {
         alert('Please login to create an agency');
         window.location.href = 'profile.html';
         return;
     }
-    
+
     const errorDiv = document.getElementById('agency-error');
     const successDiv = document.getElementById('agency-success');
     errorDiv.classList.add('hidden');
     successDiv.classList.add('hidden');
-    
+
     // Check if user already has an agency
     try {
         const agenciesRef = collection(db, 'agencies');
         const q = query(agenciesRef, where('ownerId', '==', user.uid));
         const querySnapshot = await getDocs(q);
-        
+
         if (!querySnapshot.empty) {
             errorDiv.textContent = 'You already have an agency. Go to your dashboard to manage it.';
             errorDiv.classList.remove('hidden');
@@ -75,7 +76,7 @@ document.getElementById('create-agency-form').addEventListener('submit', async (
     } catch (error) {
         console.error('Error checking agency:', error);
     }
-    
+
     const agencyData = {
         name: document.getElementById('agency-name').value.trim(),
         location: document.getElementById('agency-location').value.trim(),
@@ -87,28 +88,36 @@ document.getElementById('create-agency-form').addEventListener('submit', async (
         ratingCount: 0,
         createdAt: serverTimestamp()
     };
-    
+
     try {
-        await addDoc(collection(db, 'agencies'), agencyData);
-        
-        // Get the newly created agency ID
-        const agencyQuery = await getDocs(query(collection(db, 'agencies'), where('ownerId', '==', user.uid)));
-        const agencyId = agencyQuery.docs[0].id;
-        
+        // Create agency
+        const agencyDocRef = await addDoc(collection(db, 'agencies'), agencyData);
+        const agencyId = agencyDocRef.id;
+
         // Upsert user document to set userType to AGENCY (create if missing)
         const userDocRef = doc(db, 'users', user.uid);
-        await setDoc(userDocRef, {
+        await updateDoc(userDocRef, {
             userType: 'AGENCY',
             agencyId: agencyId
-        }, { merge: true });
-        
+        }).catch(async () => {
+            // If user document doesn't exist, create it
+            await setDoc(userDocRef, {
+                id: user.uid,
+                name: user.displayName || 'User',
+                email: user.email || '',
+                userType: 'AGENCY',
+                agencyId: agencyId,
+                createdAt: serverTimestamp()
+            });
+        });
+
         successDiv.innerHTML = `
-            <h3>Agency created successfully! 🎉</h3>
+            <h3>Agency created successfully!</h3>
             <p>Your travel agency has been created. You can now add trips to your agency.</p>
             <a href="agency-dashboard.html" class="btn btn-primary" style="margin-top: 1rem;">Go to Dashboard</a>
         `;
         successDiv.classList.remove('hidden');
-        
+
         // Reset form
         document.getElementById('create-agency-form').reset();
     } catch (error) {

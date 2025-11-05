@@ -1,5 +1,5 @@
 import { db, auth } from '../firebase.js';
-import { collection, getDocs, query, limit, orderBy } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { collection, getDocs, query, limit, orderBy, updateDoc, doc, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
 // Travel tips data (can be replaced with actual Firestore data)
@@ -93,6 +93,44 @@ async function loadFeaturedTrips() {
         };
 
         const now = new Date();
+
+        // Background-migrate: update trips for compatibility with mobile apps
+        (async () => {
+            try {
+                await Promise.all(querySnapshot.docs.map(async (d) => {
+                    const data = d.data();
+                    const updates = {};
+
+                    // Add dateTs field if missing
+                    if (data && typeof data.date === 'string' && !data.dateTs) {
+                        const parsed = parseTripDate(data.date);
+                        if (parsed) {
+                            updates.dateTs = Timestamp.fromDate(parsed);
+                        }
+                    }
+
+                    // Ensure location field exists for mobile compatibility
+                    if (data && data.location) {
+                        const locationStr = String(data.location).trim();
+                        const locationLower = locationStr.toLowerCase();
+
+                        // Always set normalized location
+                        updates.locationNormalized = locationLower;
+
+                        // Always set city fields for Flutter app compatibility
+                        updates.city = locationStr;
+                        updates.cityLower = locationLower;
+                    }
+
+                    // Apply updates if any
+                    if (Object.keys(updates).length > 0) {
+                        try {
+                            await updateDoc(doc(db, 'trips', d.id), updates);
+                        } catch (_) {}
+                    }
+                }));
+            } catch (_) {}
+        })();
 
         // Keep only upcoming/valid trips, sort by soonest date, then limit to 6
         const sortedDocs = querySnapshot.docs

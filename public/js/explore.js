@@ -45,16 +45,39 @@ async function loadDestinations() {
         const today = new Date();
         const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-        // Background-migrate: if legacy string dates exist, add parallel Timestamp field without overwriting
+        // Background-migrate: update trips for compatibility with mobile apps
         (async () => {
             try {
                 await Promise.all(tripsSnapshot.docs.map(async (d) => {
                     const data = d.data();
+                    const updates = {};
+
+                    // Add dateTs field if missing
                     if (data && typeof data.date === 'string' && !data.dateTs) {
                         const parsed = parseTripDate(data.date);
                         if (parsed) {
-                            try { await updateDoc(doc(db, 'trips', d.id), { dateTs: Timestamp.fromDate(parsed) }); } catch (_) {}
+                            updates.dateTs = Timestamp.fromDate(parsed);
                         }
+                    }
+
+                    // Ensure location field exists for mobile compatibility
+                    if (data && data.location) {
+                        const locationStr = String(data.location).trim();
+                        const locationLower = locationStr.toLowerCase();
+
+                        // Always set normalized location
+                        updates.locationNormalized = locationLower;
+
+                        // Always set city fields for Flutter app compatibility
+                        updates.city = locationStr;
+                        updates.cityLower = locationLower;
+                    }
+
+                    // Apply updates if any
+                    if (Object.keys(updates).length > 0) {
+                        try {
+                            await updateDoc(doc(db, 'trips', d.id), updates);
+                        } catch (_) {}
                     }
                 }));
             } catch (_) {}
