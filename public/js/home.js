@@ -94,30 +94,26 @@ async function loadFeaturedTrips() {
 
         const now = new Date();
 
-        // Background-migrate: update trips for compatibility with mobile apps
+        // Background-migrate: convert string dates to Timestamp for mobile app compatibility
         (async () => {
             try {
                 await Promise.all(querySnapshot.docs.map(async (d) => {
                     const data = d.data();
                     const updates = {};
 
-                    // Add dateTs field if missing
-                    if (data && typeof data.date === 'string' && !data.dateTs) {
+                    // Convert string date to Timestamp
+                    if (data && typeof data.date === 'string') {
                         const parsed = parseTripDate(data.date);
                         if (parsed) {
-                            updates.dateTs = Timestamp.fromDate(parsed);
+                            updates.date = Timestamp.fromDate(parsed);
                         }
                     }
 
-                    // Ensure location field exists for mobile compatibility
+                    // Ensure location fields for mobile compatibility
                     if (data && data.location) {
                         const locationStr = String(data.location).trim();
                         const locationLower = locationStr.toLowerCase();
-
-                        // Always set normalized location
                         updates.locationNormalized = locationLower;
-
-                        // Always set city fields for Flutter app compatibility
                         updates.city = locationStr;
                         updates.cityLower = locationLower;
                     }

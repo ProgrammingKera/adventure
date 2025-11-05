@@ -11,7 +11,8 @@ import {
     updateDoc,
     serverTimestamp,
     orderBy,
-    Timestamp
+    Timestamp,
+    setDoc
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 let currentAgencyId = null;
@@ -119,59 +120,50 @@ async function loadTrips(agencyId) {
         // Clear any initial loading UI
         container.innerHTML = '';
         
-        // Helper: parse legacy string date into Date
-        const parseLegacyDate = (val) => {
-            if (!val || typeof val !== 'string') return null;
-            // Strip trailing UTC offset like " UTC+5"
-            let s = val.replace(/\sUTC[+-]\d+$/i, '');
-            // Replace " at " with space, remove extra commas
-            s = s.replace(/\sat\s/i, ' ').replace(/,/g, ' ').replace(/\s+/g, ' ').trim();
-            const d = new Date(s);
-            if (!isNaN(d.getTime())) return d;
-            // Try basic Month Day Year without time
-            const m = s.match(/^(\w+)\s(\d{1,2})\s(\d{4})/);
-            if (m) {
-                return new Date(`${m[1]} ${m[2]}, ${m[3]}`);
+        // Helper: safely get Date from any date field format
+        const getTripDate = (trip) => {
+            // Priority 1: Use date field if it's a Timestamp
+            if (trip.date?.toDate) {
+                return trip.date.toDate();
+            }
+            // Priority 2: Parse string date if exists
+            if (typeof trip.date === 'string') {
+                let s = trip.date.replace(/\sUTC[+-]\d+$/i, '');
+                s = s.replace(/\sat\s/i, ' ').replace(/,/g, ' ').replace(/\s+/g, ' ').trim();
+                const d = new Date(s);
+                if (!isNaN(d.getTime())) return d;
             }
             return null;
         };
 
-        // Background-migrate: if legacy string dates exist, add a parallel Timestamp field without overwriting
+        // Background-migrate: convert string dates to Timestamp and ensure location fields
         (async () => {
             try {
                 await Promise.all(querySnapshot.docs.map(async (docSnap) => {
                     const data = docSnap.data();
-                    if (data && typeof data.date === 'string' && !data.dateTs) {
-                        const parsed = parseLegacyDate(data.date);
-                        if (parsed && !isNaN(parsed.getTime())) {
-                            try {
-                                await updateDoc(doc(db, 'trips', docSnap.id), { dateTs: Timestamp.fromDate(parsed) });
-                            } catch (_) {
-                                // ignore individual failures, continue
-                            }
+                    const updates = {};
+
+                    // Convert string date to Timestamp
+                    if (data && typeof data.date === 'string') {
+                        const parsed = getTripDate(data);
+                        if (parsed) {
+                            updates.date = Timestamp.fromDate(parsed);
                         }
                     }
-                    // Ensure normalized location exists
-                    if (data && !data.locationNormalized && data.location) {
-                        const normalized = String(data.location).trim().toLowerCase();
-                        if (normalized) {
-                            try {
-                                await updateDoc(doc(db, 'trips', docSnap.id), {
-                                    locationNormalized: normalized
-                                });
-                            } catch (_) {}
-                        }
+
+                    // Ensure location fields exist
+                    if (data && data.location) {
+                        const locationStr = String(data.location).trim();
+                        const locationLower = locationStr.toLowerCase();
+                        updates.locationNormalized = locationLower;
+                        updates.city = locationStr;
+                        updates.cityLower = locationLower;
                     }
-                    // Ensure city compatibility fields exist (for Flutter apps using 'city')
-                    if (data && (!data.city || !data.cityLower) && (data.location || data.locationNormalized)) {
-                        const source = (data.location ?? data.locationNormalized ?? '').toString();
-                        const city = source.trim();
-                        const cityLower = city.toLowerCase();
+
+                    // Apply updates if any
+                    if (Object.keys(updates).length > 0) {
                         try {
-                            await updateDoc(doc(db, 'trips', docSnap.id), {
-                                city: city,
-                                cityLower: cityLower
-                            });
+                            await updateDoc(doc(db, 'trips', docSnap.id), updates);
                         } catch (_) {}
                     }
                 }));
@@ -190,19 +182,16 @@ async function loadTrips(agencyId) {
         
         // Sort trips by date in memory (most recent first)
         const sortedDocs = querySnapshot.docs.sort((a, b) => {
-            const ad = a.data();
-            const bd = b.data();
-            const da = ad.dateTs?.toDate ? ad.dateTs.toDate() : (typeof ad.date === 'string' ? (parseLegacyDate(ad.date) || new Date(0)) : new Date(0));
-            const db = bd.dateTs?.toDate ? bd.dateTs.toDate() : (typeof bd.date === 'string' ? (parseLegacyDate(bd.date) || new Date(0)) : new Date(0));
-            return (db.getTime() || 0) - (da.getTime() || 0);
+            const da = getTripDate(a.data()) || new Date(0);
+            const db = getTripDate(b.data()) || new Date(0);
+            return db.getTime() - da.getTime();
         });
-        
+
         container.innerHTML = sortedDocs.map(docSnap => {
             const trip = docSnap.data();
             const availableSeats = Math.max(0, (trip.totalSeats || 0) - (trip.bookedSeats || 0));
-            const dateStr = trip?.dateTs?.toDate
-                ? trip.dateTs.toDate().toLocaleDateString()
-                : (typeof trip.date === 'string' ? ((parseLegacyDate(trip.date)?.toLocaleDateString()) || trip.date.split(' at ')[0]) : 'N/A');
+            const tripDate = getTripDate(trip);
+            const dateStr = tripDate ? tripDate.toLocaleDateString() : 'N/A';
             const priceStr = `PKR ${Number(trip.pricePerSeat || 0).toLocaleString()}`;
             const title = trip.description || 'Trip';
             const location = trip.location || 'N/A';
@@ -268,17 +257,10 @@ document.getElementById('trip-form').addEventListener('submit', async (e) => {
     errorDiv.classList.add('hidden');
     successDiv.classList.add('hidden');
     
-    // Format date both as legacy string (for older/mobile clients) and as Timestamp (for new code)
+    // Store date as Firestore Timestamp (mobile apps need this)
     const dateInput = document.getElementById('trip-date').value; // YYYY-MM-DD
     const dateObj = dateInput ? new Date(dateInput + 'T00:00:00') : null;
-    const formattedDate = dateObj
-        ? (new Date(dateObj).toLocaleString('en-US', {
-            timeZone: 'Asia/Karachi',
-            year: 'numeric', month: 'long', day: 'numeric',
-            hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
-        }) + ' UTC+5')
-        : null;
-    
+
     const tripData = {
         agencyId: currentAgencyId,
         description: document.getElementById('trip-description').value.trim(),
@@ -287,8 +269,7 @@ document.getElementById('trip-form').addEventListener('submit', async (e) => {
         city: document.getElementById('trip-location').value.trim(),
         cityLower: document.getElementById('trip-location').value.trim().toLowerCase(),
         imageUrl: document.getElementById('trip-image-url').value.trim(),
-        date: formattedDate,          // legacy string field (kept for compatibility)
-        dateTs: dateObj ? Timestamp.fromDate(dateObj) : null, // new timestamp field
+        date: dateObj ? Timestamp.fromDate(dateObj) : null, // Firestore Timestamp for mobile compatibility
         departure: document.getElementById('trip-departure').value.trim(),
         totalSeats: parseInt(document.getElementById('trip-total-seats').value),
         pricePerSeat: parseInt(document.getElementById('trip-price').value),

@@ -45,30 +45,26 @@ async function loadDestinations() {
         const today = new Date();
         const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-        // Background-migrate: update trips for compatibility with mobile apps
+        // Background-migrate: convert string dates to Timestamp for mobile app compatibility
         (async () => {
             try {
                 await Promise.all(tripsSnapshot.docs.map(async (d) => {
                     const data = d.data();
                     const updates = {};
 
-                    // Add dateTs field if missing
-                    if (data && typeof data.date === 'string' && !data.dateTs) {
+                    // Convert string date to Timestamp
+                    if (data && typeof data.date === 'string') {
                         const parsed = parseTripDate(data.date);
                         if (parsed) {
-                            updates.dateTs = Timestamp.fromDate(parsed);
+                            updates.date = Timestamp.fromDate(parsed);
                         }
                     }
 
-                    // Ensure location field exists for mobile compatibility
+                    // Ensure location fields for mobile compatibility
                     if (data && data.location) {
                         const locationStr = String(data.location).trim();
                         const locationLower = locationStr.toLowerCase();
-
-                        // Always set normalized location
                         updates.locationNormalized = locationLower;
-
-                        // Always set city fields for Flutter app compatibility
                         updates.city = locationStr;
                         updates.cityLower = locationLower;
                     }
@@ -157,8 +153,8 @@ function renderCityTrips(city, trips) {
     const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     const getDate = (t) => t._parsedDate ?? parseTripDate(t.date);
     const sorted = [...trips].sort((a, b) => {
-        const da = a.dateTs?.toDate ? a.dateTs.toDate() : getDate(a);
-        const db = b.dateTs?.toDate ? b.dateTs.toDate() : getDate(b);
+        const da = getDate(a);
+        const db = getDate(b);
         const group = (d) => (d ? (d >= startOfToday ? 0 : 1) : 2);
         const ga = group(da);
         const gb = group(db);
