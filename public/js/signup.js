@@ -12,7 +12,12 @@ import {
 
 onAuthStateChanged(auth, (user) => {
     if (user) {
-        window.location.href = 'profile.html';
+        // Check if admin
+        if (user.email === 'admin@gmail.com') {
+            window.location.href = 'admin-panel.html';
+        } else {
+            window.location.href = 'index.html';
+        }
     }
 });
 

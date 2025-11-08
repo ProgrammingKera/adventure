@@ -46,6 +46,14 @@ function getFirebaseErrorMessage(error) {
 
 async function redirectAfterLogin(userId) {
 	try {
+		// Check if user is admin
+		const user = auth.currentUser;
+		if (user && user.email === 'admin@gmail.com') {
+			window.location.href = 'admin-panel.html';
+			return;
+		}
+		
+		// Check if user has agency
 		const agenciesRef = collection(db, 'agencies');
 		const q = query(agenciesRef, where('ownerId', '==', userId));
 		const snapshot = await getDocs(q);
@@ -53,9 +61,11 @@ async function redirectAfterLogin(userId) {
 			window.location.href = 'agency-dashboard.html';
 			return;
 		}
-		window.location.href = 'create-agency.html';
+		
+		// Regular user without agency
+		window.location.href = 'index.html';
 	} catch (e) {
 		console.error('Redirect error:', e);
-		window.location.href = 'profile.html';
+		window.location.href = 'index.html';
 	}
 }

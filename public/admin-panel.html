@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - AI Trip Planner</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .admin-container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .admin-header {
+            background: linear-gradient(135deg, #2d6a4f 0%, #1b4332 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        .stats-dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .stat-box {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .stat-box h3 {
+            color: var(--text-light);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+        }
+        .stat-box .stat-number {
+            color: var(--primary-color);
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+        .admin-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+        .admin-tab {
+            padding: 0.75rem 1.5rem;
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+        .admin-tab.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+        .admin-tab:hover {
+            border-color: var(--primary-color);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .data-table {
+            background: white;
+            border-radius: 8px;
+            overflow-x: auto;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .data-table table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+        .data-table th {
+            background: #f8f9fa;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-dark);
+            border-bottom: 2px solid #e9ecef;
+        }
+        .data-table td {
+            padding: 1rem;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .data-table tr:hover {
+            background: #f8f9fa;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .btn-small {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.85rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-edit {
+            background: #0d6efd;
+            color: white;
+        }
+        .btn-edit:hover {
+            background: #0b5ed7;
+        }
+        .btn-delete {
+            background: #dc3545;
+            color: white;
+        }
+        .btn-delete:hover {
+            background: #bb2d3b;
+        }
+        .btn-view {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-view:hover {
+            background: #5c636a;
+        }
+        .search-filter {
+            margin-bottom: 1.5rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .search-filter input {
+            flex: 1;
+            min-width: 250px;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <a href="index.html" class="logo" aria-label="AI Trip Planner">
+                <img src="assets/inlogo.png" alt="AI Trip Planner Logo" class="logo-img">
+            </a>
+            <ul class="nav-links center">
+                <li><a class="nav-link" href="index.html">Home</a></li>
+                <li><a class="nav-link active" href="admin-panel.html">Admin Panel</a></li>
+            </ul>
+            <button id="logout-btn" class="btn small btn-secondary">Logout</button>
+        </nav>
+    </header>
+
+    <div class="admin-container">
+        <div class="admin-header">
+            <h1>Admin Dashboard</h1>
+            <p>Manage users, agencies, trips, and testimonials</p>
+        </div>
+
+        <!-- Statistics Dashboard -->
+        <div class="stats-dashboard">
+            <div class="stat-box">
+                <h3>Total Users</h3>
+                <div class="stat-number" id="stat-users">0</div>
+            </div>
+            <div class="stat-box">
+                <h3>Total Agencies</h3>
+                <div class="stat-number" id="stat-agencies">0</div>
+            </div>
+            <div class="stat-box">
+                <h3>Total Trips</h3>
+                <div class="stat-number" id="stat-trips">0</div>
+            </div>
+            <div class="stat-box">
+                <h3>Total Bookings</h3>
+                <div class="stat-number" id="stat-bookings">0</div>
+            </div>
+            <div class="stat-box">
+                <h3>Testimonials</h3>
+                <div class="stat-number" id="stat-testimonials">0</div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="admin-tabs">
+            <div class="admin-tab active" data-tab="users">Users</div>
+            <div class="admin-tab" data-tab="agencies">Agencies</div>
+            <div class="admin-tab" data-tab="trips">Trips</div>
+            <div class="admin-tab" data-tab="bookings">Bookings</div>
+            <div class="admin-tab" data-tab="testimonials">Testimonials</div>
+        </div>
+
+        <!-- Users Tab -->
+        <div class="tab-content active" id="users-tab">
+            <div class="search-filter">
+                <input type="text" id="search-users" placeholder="Search users by name or email...">
+            </div>
+            <div class="data-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>City</th>
+                            <th>Phone</th>
+                            <th>Has Agency</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-table-body">
+                        <tr><td colspan="6" style="text-align: center;">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Agencies Tab -->
+        <div class="tab-content" id="agencies-tab">
+            <div class="search-filter">
+                <input type="text" id="search-agencies" placeholder="Search agencies by name or location...">
+            </div>
+            <div class="data-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Owner</th>
+                            <th>Location</th>
+                            <th>Rating</th>
+                            <th>Phone</th>
+                            <th>Email</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="agencies-table-body">
+                        <tr><td colspan="7" style="text-align: center;">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Trips Tab -->
+        <div class="tab-content" id="trips-tab">
+            <div class="search-filter">
+                <input type="text" id="search-trips" placeholder="Search trips by description or location...">
+            </div>
+            <div class="data-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Description</th>
+                            <th>Agency</th>
+                            <th>Location</th>
+                            <th>Departure</th>
+                            <th>Price</th>
+                            <th>Seats</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="trips-table-body">
+                        <tr><td colspan="7" style="text-align: center;">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Bookings Tab -->
+        <div class="tab-content" id="bookings-tab">
+            <div class="search-filter">
+                <input type="text" id="search-bookings" placeholder="Search bookings by user or trip...">
+            </div>
+            <div class="data-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Trip</th>
+                            <th>Seats</th>
+                            <th>Total Price</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bookings-table-body">
+                        <tr><td colspan="7" style="text-align: center;">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Testimonials Tab -->
+        <div class="tab-content" id="testimonials-tab">
+            <div class="search-filter">
+                <input type="text" id="search-testimonials" placeholder="Search testimonials by name or title...">
+            </div>
+            <div class="data-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Title</th>
+                            <th>Message</th>
+                            <th>Rating</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="testimonials-table-body">
+                        <tr><td colspan="6" style="text-align: center;">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="loading">
+            <div class="spinner"></div>
+            <p style="color: white; margin-top: 1rem;">Processing...</p>
+        </div>
+    </div>
+
+    <script type="module" src="js/admin-panel.js"></script>
+</body>
+</html>

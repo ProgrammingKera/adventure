@@ -345,7 +345,118 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
+// Load testimonials from Firestore
+async function loadTestimonials() {
+    try {
+        const testimonialsGrid = document.getElementById('testimonials-grid');
+        const testimonialsRef = collection(db, 'testimonials');
+        const q = query(testimonialsRef, orderBy('createdAt', 'desc'), limit(20));
+        const querySnapshot = await getDocs(q);
+        
+        if (querySnapshot.empty) {
+            // Keep default testimonials if none in Firestore
+            return;
+        }
+        
+        testimonialsGrid.innerHTML = '';
+        querySnapshot.forEach(doc => {
+            const testimonial = doc.data();
+            const stars = '⭐'.repeat(testimonial.rating || 5);
+            
+            const card = document.createElement('div');
+            card.className = 'feature-card';
+            card.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <div class="feature-title">"${testimonial.title || 'Great Experience'}"</div>
+                    <div style="color: #FFA500;">${stars}</div>
+                </div>
+                <div class="feature-text">${testimonial.message || ''}</div>
+                <div style="margin-top: 0.5rem; color: var(--text-light); font-size: 0.85rem;">- ${testimonial.name || 'Anonymous'}</div>
+            `;
+            testimonialsGrid.appendChild(card);
+        });
+    } catch (error) {
+        console.error('Error loading testimonials:', error);
+    }
+}
+
+// Handle testimonial form submission
+function setupTestimonialForm() {
+    const form = document.getElementById('testimonial-form');
+    const alertDiv = document.getElementById('testimonial-message-alert');
+    
+    if (!form) return;
+    
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const name = document.getElementById('testimonial-name').value.trim();
+        const title = document.getElementById('testimonial-title').value.trim();
+        const message = document.getElementById('testimonial-message').value.trim();
+        const rating = parseInt(document.getElementById('testimonial-rating').value);
+        
+        if (!name || !title || !message) {
+            alertDiv.textContent = 'Please fill all fields';
+            alertDiv.className = 'alert alert-error';
+            alertDiv.style.display = 'block';
+            return;
+        }
+        
+        try {
+            // Add to Firestore
+            const testimonialsRef = collection(db, 'testimonials');
+            await addDoc(testimonialsRef, {
+                name,
+                title,
+                message,
+                rating,
+                createdAt: serverTimestamp()
+            });
+            
+            // Show success message
+            alertDiv.textContent = 'Thank you! Your testimonial has been submitted.';
+            alertDiv.className = 'alert alert-success';
+            alertDiv.style.display = 'block';
+            
+            // Clear form
+            form.reset();
+            
+            // Add to grid immediately (live update)
+            const testimonialsGrid = document.getElementById('testimonials-grid');
+            const stars = '⭐'.repeat(rating);
+            
+            const card = document.createElement('div');
+            card.className = 'feature-card';
+            card.style.animation = 'fadeIn 0.5s ease-in';
+            card.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <div class="feature-title">"${title}"</div>
+                    <div style="color: #FFA500;">${stars}</div>
+                </div>
+                <div class="feature-text">${message}</div>
+                <div style="margin-top: 0.5rem; color: var(--text-light); font-size: 0.85rem;">- ${name}</div>
+            `;
+            
+            // Add to beginning of grid
+            testimonialsGrid.insertBefore(card, testimonialsGrid.firstChild);
+            
+            // Hide success message after 3 seconds
+            setTimeout(() => {
+                alertDiv.style.display = 'none';
+            }, 3000);
+            
+        } catch (error) {
+            console.error('Error submitting testimonial:', error);
+            alertDiv.textContent = 'Failed to submit testimonial. Please try again.';
+            alertDiv.className = 'alert alert-error';
+            alertDiv.style.display = 'block';
+        }
+    });
+}
+
 // Initialize page
 loadTravelTips();
 loadFeaturedTrips();
+loadTestimonials();
+setupTestimonialForm();
 

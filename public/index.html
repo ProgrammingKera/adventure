@@ -120,31 +120,90 @@
             </div>
         </section>
 
-        <section class="section">
-            <div class="newsletter">
-                <h3 style="color: var(--primary-color); margin-bottom: .5rem;">Stay updated</h3>
-                <p style="color: var(--text-light); margin-bottom: .75rem;">Get new trips and travel tips in your inbox.</p>
-                <form onsubmit="event.preventDefault(); alert('Subscribed!');">
-                    <input type="email" placeholder="you@example.com" required>
-                    <button class="btn btn-primary" type="submit">Subscribe</button>
-                </form>
+        <section class="section" style="background: linear-gradient(135deg, #2d6a4f 0%, #1b4332 100%); padding: 3rem 1rem; border-radius: 12px; margin: 2rem 0;">
+            <h2 class="section-title" style="color: #fff; margin-bottom: 2rem;">How It Works</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; max-width: 1200px; margin: 0 auto;">
+                <div style="text-align: center; padding: 2rem; background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border-radius: 12px; border: 1px solid rgba(255,255,255,0.2);">
+                    <div style="width: 70px; height: 70px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 2rem; font-weight: bold; color: #2d6a4f;">1</div>
+                    <h3 style="color: #fff; margin-bottom: 0.75rem; font-size: 1.25rem;">Explore Destinations</h3>
+                    <p style="color: rgba(255,255,255,0.9); line-height: 1.6;">Browse through our curated list of trips and destinations across Pakistan. Filter by location, price, and dates.</p>
+                </div>
+                <div style="text-align: center; padding: 2rem; background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border-radius: 12px; border: 1px solid rgba(255,255,255,0.2);">
+                    <div style="width: 70px; height: 70px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 2rem; font-weight: bold; color: #2d6a4f;">2</div>
+                    <h3 style="color: #fff; margin-bottom: 0.75rem; font-size: 1.25rem;">AI Trip Planning</h3>
+                    <p style="color: rgba(255,255,255,0.9); line-height: 1.6;">Use our AI-powered planner to create personalized itineraries based on your budget, time, and preferences.</p>
+                </div>
+                <div style="text-align: center; padding: 2rem; background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border-radius: 12px; border: 1px solid rgba(255,255,255,0.2);">
+                    <div style="width: 70px; height: 70px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 2rem; font-weight: bold; color: #2d6a4f;">3</div>
+                    <h3 style="color: #fff; margin-bottom: 0.75rem; font-size: 1.25rem;">Book Instantly</h3>
+                    <p style="color: rgba(255,255,255,0.9); line-height: 1.6;">Reserve your seats in seconds with verified agencies. Track all your bookings in your profile.</p>
+                </div>
+                <div style="text-align: center; padding: 2rem; background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border-radius: 12px; border: 1px solid rgba(255,255,255,0.2);">
+                    <div style="width: 70px; height: 70px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 2rem; font-weight: bold; color: #2d6a4f;">4</div>
+                    <h3 style="color: #fff; margin-bottom: 0.75rem; font-size: 1.25rem;">Enjoy Your Trip</h3>
+                    <p style="color: rgba(255,255,255,0.9); line-height: 1.6;">Travel with confidence knowing you have the best itinerary and trusted agency support throughout your journey.</p>
+                </div>
             </div>
         </section>
 
         <section class="section">
             <h2 class="section-title">What Travelers Say</h2>
-            <div class="features-grid">
+            
+            <!-- Add Testimonial Form -->
+            <div style="max-width: 600px; margin: 0 auto 2rem; padding: 1.5rem; background: #f8f9fa; border-radius: 8px;">
+                <h3 style="color: var(--primary-color); margin-bottom: 1rem; text-align: center;">Share Your Experience</h3>
+                <form id="testimonial-form">
+                    <div class="form-group">
+                        <input type="text" id="testimonial-name" placeholder="Your Name" required style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 0.75rem;">
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="testimonial-title" placeholder="Title (e.g., Amazing experience!)" required style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 0.75rem;">
+                    </div>
+                    <div class="form-group">
+                        <textarea id="testimonial-message" placeholder="Share your experience..." required rows="3" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 0.75rem; resize: vertical;"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-dark); margin-bottom: 0.75rem;">
+                            <span>Rating:</span>
+                            <select id="testimonial-rating" required style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="5">⭐⭐⭐⭐⭐ (5 stars)</option>
+                                <option value="4">⭐⭐⭐⭐ (4 stars)</option>
+                                <option value="3">⭐⭐⭐ (3 stars)</option>
+                                <option value="2">⭐⭐ (2 stars)</option>
+                                <option value="1">⭐ (1 star)</option>
+                            </select>
+                        </label>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Submit Testimonial</button>
+                </form>
+                <div id="testimonial-message-alert" class="alert hidden" style="margin-top: 1rem;"></div>
+            </div>
+
+            <!-- Testimonials Grid -->
+            <div id="testimonials-grid" class="features-grid">
                 <div class="feature-card">
-                    <div class="feature-title">“Amazing experience!”</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <div class="feature-title">"Amazing experience!"</div>
+                        <div style="color: #FFA500;">⭐⭐⭐⭐⭐</div>
+                    </div>
                     <div class="feature-text">Our Hunza trip was perfectly planned. Highly recommend!</div>
+                    <div style="margin-top: 0.5rem; color: var(--text-light); font-size: 0.85rem;">- Sarah Khan</div>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-title">“So easy to book”</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <div class="feature-title">"So easy to book"</div>
+                        <div style="color: #FFA500;">⭐⭐⭐⭐⭐</div>
+                    </div>
                     <div class="feature-text">Found and booked a weekend getaway in minutes.</div>
+                    <div style="margin-top: 0.5rem; color: var(--text-light); font-size: 0.85rem;">- Ahmed Ali</div>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-title">“Great value”</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <div class="feature-title">"Great value"</div>
+                        <div style="color: #FFA500;">⭐⭐⭐⭐</div>
+                    </div>
                     <div class="feature-text">Itinerary matched our budget and interests exactly.</div>
+                    <div style="margin-top: 0.5rem; color: var(--text-light); font-size: 0.85rem;">- Fatima Noor</div>
                 </div>
             </div>
         </section>
@@ -153,25 +212,32 @@
     <footer>
         <div class="footer-inner">
             <div class="footer-col">
-                <img src="assets/inLogo.png" alt="AI Trip Planner" class="logo-img" style="height:28px; margin-bottom:.5rem;">
-                <p style="color:#a9c2b6;">Plan smarter, travel better. AI itineraries and verified trips.</p>
+                <img src="assets/inLogo.png" alt="AI Trip Planner" class="logo-img" style="height:32px; margin-bottom:.75rem; filter: brightness(0) invert(1);">
+                <p style="color:#a9c2b6; max-width: 250px;">Plan smarter, travel better. AI itineraries and verified trips.</p>
             </div>
             <div class="footer-col">
-                <h4>Explore</h4>
-                <a href="explore.html">Destinations</a>
+                <h4>Quick Links</h4>
+                <a href="index.html">Home</a>
+                <a href="explore.html">Explore Destinations</a>
                 <a href="plan-trip.html">AI Trip Planner</a>
-                <a href="profile.html">Your Profile</a>
+                <a href="image-predict.html">Image Predict</a>
             </div>
             <div class="footer-col">
-                <h4>Company</h4>
-                <a href="#">About</a>
-                <a href="#">Contact</a>
-                <a href="#">Terms</a>
+                <h4>Account</h4>
+                <a href="profile.html">Profile</a>
+                <a href="signup.html">Sign Up</a>
+                <a href="login.html">Login</a>
+                <a href="create-agency.html">Create Agency</a>
             </div>
             <div class="footer-col">
-                <h4>Get in touch</h4>
-                <a href="#">support@aitripplanner.app</a>
-                <a href="#">+92 300 0000000</a>
+                <h4>Get in Touch</h4>
+                <a href="mailto:support@aitripplanner.app">support@aitripplanner.app</a>
+                <a href="tel:+923000000000">+92 300 0000000</a>
+                <div style="margin-top: 1rem; display: flex; gap: 1rem;">
+                    <a href="#" style="color: #fff; font-size: 1.2rem;" title="Facebook">📘</a>
+                    <a href="#" style="color: #fff; font-size: 1.2rem;" title="Instagram">📷</a>
+                    <a href="#" style="color: #fff; font-size: 1.2rem;" title="Twitter">🐦</a>
+                </div>
             </div>
         </div>
         <div class="footer-bottom">© <span id="year"></span> AI Trip Planner. All rights reserved.</div>
