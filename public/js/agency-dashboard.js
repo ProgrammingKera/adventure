@@ -13,9 +13,12 @@ import {
     orderBy,
     Timestamp,
     setDoc
+,
+    deleteDoc
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 let currentAgencyId = null;
+let currentEditingTripId = null;
 
 // Check auth and load agency
 onAuthStateChanged(auth, async (user) => {
@@ -158,6 +161,31 @@ async function loadTrips(agencyId) {
                         updates.dateTimestamp = dateObj.getTime();
                     }
 
+                    // Normalize duplicate date fields for mobile schemas
+                    if (data && data.date?.toDate && !data.startDate) {
+                        updates.startDate = data.date;
+                    }
+                    if (data && (data.dateTimestamp || data.date?.toDate) && !data.startDateMillis) {
+                        const millis = data.dateTimestamp || data.date.toDate().getTime();
+                        updates.startDateMillis = millis;
+                    }
+
+                    // Visibility/status defaults expected by some mobile apps
+                    if (data && typeof data.isPublished === 'undefined') {
+                        updates.isPublished = true;
+                    }
+                    if (data && !data.status) {
+                        updates.status = 'active';
+                    }
+
+                    // Created/updated millis for mobile orderBy queries
+                    if (data && data.createdAt?.toMillis && !data.createdAtMillis) {
+                        updates.createdAtMillis = data.createdAt.toMillis();
+                    }
+                    if (data && data.updatedAt?.toMillis && !data.updatedAtMillis) {
+                        updates.updatedAtMillis = data.updatedAt.toMillis();
+                    }
+
                     // Ensure location fields exist
                     if (data && data.location) {
                         const locationStr = String(data.location).trim();
@@ -216,8 +244,10 @@ async function loadTrips(agencyId) {
                             <span class="chip">${departure}</span>
                             <span class="chip">${availableSeats}/${trip.totalSeats || 0} seats</span>
                         </div>
-                        <div class="trip-actions">
+                        <div class="trip-actions" style="display:grid; grid-template-columns: 1fr 1fr; gap:.5rem;">
                             <button class="btn btn-secondary" onclick="viewTripBookings('${docSnap.id}')">View Bookings</button>
+                            <button class="btn btn-secondary" onclick="editTrip('${docSnap.id}')">Edit</button>
+                            <button class="btn btn-secondary" style="grid-column: 1 / -1; border-color:#dc3545; color:#dc3545;" onclick="deleteTrip('${docSnap.id}')">Delete</button>
                         </div>
                     </div>
                 </div>
@@ -230,11 +260,76 @@ async function loadTrips(agencyId) {
     }
 }
 
+
+// Cloudinary Upload Handler
+const cloudinaryUploadBtn = document.getElementById('cloudinary-upload-btn');
+if (cloudinaryUploadBtn) {
+    cloudinaryUploadBtn.addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            // Validate file
+            if (file.size > 10 * 1024 * 1024) {
+                alert('Image size should be less than 10MB');
+                return;
+            }
+            
+            const statusDiv = document.getElementById('upload-status');
+            const urlInput = document.getElementById('trip-image-url');
+            
+            try {
+                statusDiv.textContent = 'Uploading...';
+                statusDiv.style.color = 'var(--primary-color)';
+                cloudinaryUploadBtn.disabled = true;
+                
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('upload_preset', 'jtgeeyis');
+                
+                const response = await fetch('https://api.cloudinary.com/v1_1/dow1tbstn/image/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) throw new Error('Upload failed');
+                
+                const data = await response.json();
+                urlInput.value = data.secure_url;
+                
+                statusDiv.textContent = '✓ Image uploaded successfully!';
+                statusDiv.style.color = 'green';
+                
+                setTimeout(() => {
+                    statusDiv.textContent = '';
+                }, 3000);
+            } catch (error) {
+                console.error('Upload error:', error);
+                statusDiv.textContent = '✗ Upload failed. Please try again.';
+                statusDiv.style.color = 'red';
+            } finally {
+                cloudinaryUploadBtn.disabled = false;
+            }
+        };
+        
+        input.click();
+    });
+}
+
 // Add Trip Form Toggle
 document.getElementById('add-trip-btn').addEventListener('click', () => {
     const form = document.getElementById('add-trip-form');
     form.classList.remove('hidden');
     form.scrollIntoView({ behavior: 'smooth' });
+    
+    // Reset image preview
+    selectedTripImageBase64 = null;
+    if (tripImageFileInput) tripImageFileInput.value = '';
+    if (tripImagePreview) tripImagePreview.style.display = 'none';
     
     // Set minimum date to today
     const today = new Date().toISOString().split('T')[0];
@@ -246,6 +341,13 @@ document.getElementById('cancel-trip-btn').addEventListener('click', () => {
     document.getElementById('trip-form').reset();
     document.getElementById('trip-error').classList.add('hidden');
     document.getElementById('trip-success').classList.add('hidden');
+    // Reset edit mode UI
+    currentEditingTripId = null;
+    const formWrap = document.getElementById('add-trip-form');
+    const titleEl = formWrap.querySelector('h3');
+    const submitBtn = document.querySelector('#trip-form button[type="submit"]');
+    if (titleEl) titleEl.textContent = 'Add New Trip';
+    if (submitBtn) submitBtn.textContent = '+ Add Trip';
 });
 
 // Submit Trip Form
@@ -271,6 +373,7 @@ document.getElementById('trip-form').addEventListener('submit', async (e) => {
     // Create Timestamp for Firestore
     const firestoreTimestamp = dateObj ? Timestamp.fromDate(dateObj) : null;
 
+    const nowMillis = Date.now();
     const tripData = {
         agencyId: currentAgencyId,
         description: document.getElementById('trip-description').value.trim(),
@@ -279,41 +382,127 @@ document.getElementById('trip-form').addEventListener('submit', async (e) => {
         city: document.getElementById('trip-location').value.trim(),
         cityLower: document.getElementById('trip-location').value.trim().toLowerCase(),
         imageUrl: document.getElementById('trip-image-url').value.trim(),
+        // Dates
         date: firestoreTimestamp, // Firestore Timestamp for mobile compatibility
         dateTimestamp: dateObj ? dateObj.getTime() : null, // Milliseconds timestamp for mobile queries
+        startDate: firestoreTimestamp, // duplicate for mobile schemas expecting startDate
+        startDateMillis: dateObj ? dateObj.getTime() : null,
+        // Meta
         departure: document.getElementById('trip-departure').value.trim(),
         totalSeats: parseInt(document.getElementById('trip-total-seats').value),
         pricePerSeat: parseInt(document.getElementById('trip-price').value),
         bookedSeats: 0,
+        status: 'active',
+        isPublished: true,
+        visibleFrom: serverTimestamp(),
+        // IDs & timestamps
         id: '', // Will be set after creation
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
+        createdAtMillis: nowMillis,
+        updatedAt: serverTimestamp(),
+        updatedAtMillis: nowMillis
     };
     
     try {
-        // Create with a known ID so 'id' is present immediately (helps mobile apps)
-        const newRef = doc(collection(db, 'trips'));
-        await setDoc(newRef, { ...tripData, id: newRef.id });
-        
-        successDiv.textContent = 'Trip added successfully!';
+        if (currentEditingTripId) {
+            // Update existing trip
+            const ref = doc(db, 'trips', currentEditingTripId);
+            await updateDoc(ref, {
+                ...tripData,
+                id: currentEditingTripId,
+                updatedAt: serverTimestamp(),
+                updatedAtMillis: nowMillis
+            });
+            successDiv.textContent = 'Trip updated successfully!';
+        } else {
+            // Create with a known ID so 'id' is present immediately (helps mobile apps)
+            const newRef = doc(collection(db, 'trips'));
+            await setDoc(newRef, { ...tripData, id: newRef.id });
+            successDiv.textContent = 'Trip added successfully!';
+        }
+
         successDiv.classList.remove('hidden');
+        
+        // Reload trips and stats FIRST (so user sees new trip immediately)
+        await loadTrips(currentAgencyId);
+        await loadStats(currentAgencyId);
         
         // Reset form
         document.getElementById('trip-form').reset();
         document.getElementById('add-trip-form').classList.add('hidden');
-        
-        // Reload trips and stats
-        await loadTrips(currentAgencyId);
-        await loadStats(currentAgencyId);
+        currentEditingTripId = null;
+        const formWrap = document.getElementById('add-trip-form');
+        const titleEl = formWrap.querySelector('h3');
+        const submitBtn = document.querySelector('#trip-form button[type="submit"]');
+        if (titleEl) titleEl.textContent = 'Add New Trip';
+        if (submitBtn) submitBtn.textContent = 'Add Trip';
         
         setTimeout(() => {
             successDiv.classList.add('hidden');
         }, 3000);
     } catch (error) {
-        console.error('Error adding trip:', error);
-        errorDiv.textContent = 'Failed to add trip: ' + error.message;
+        console.error('Error saving trip:', error);
+        errorDiv.textContent = 'Failed to save trip: ' + error.message;
         errorDiv.classList.remove('hidden');
     }
 });
+
+// Edit trip
+window.editTrip = async function(tripId) {
+    try {
+        const ref = doc(db, 'trips', tripId);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) {
+            alert('Trip not found');
+            return;
+        }
+        const t = snap.data();
+        // Prefill form
+        document.getElementById('trip-description').value = t.description || '';
+        document.getElementById('trip-location').value = t.location || '';
+        
+        document.getElementById('trip-image-url').value = t.imageUrl || '';
+        // Date input in YYYY-MM-DD
+        const dateObj = (t.startDate?.toDate && t.startDate.toDate()) || (t.date?.toDate && t.date.toDate()) || (typeof t.startDateMillis === 'number' ? new Date(t.startDateMillis) : (typeof t.dateTimestamp === 'number' ? new Date(t.dateTimestamp) : null));
+        if (dateObj && !isNaN(dateObj.getTime())) {
+            const yyyy = dateObj.getFullYear();
+            const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const dd = String(dateObj.getDate()).padStart(2, '0');
+            document.getElementById('trip-date').value = `${yyyy}-${mm}-${dd}`;
+        } else {
+            document.getElementById('trip-date').value = '';
+        }
+        document.getElementById('trip-departure').value = t.departure || '';
+        document.getElementById('trip-total-seats').value = t.totalSeats || '';
+        document.getElementById('trip-price').value = t.pricePerSeat || '';
+
+        // Switch to edit mode UI
+        currentEditingTripId = tripId;
+        const formWrap = document.getElementById('add-trip-form');
+        const titleEl = formWrap.querySelector('h3');
+        const submitBtn = document.querySelector('#trip-form button[type="submit"]');
+        if (titleEl) titleEl.textContent = 'Edit Trip';
+        if (submitBtn) submitBtn.textContent = 'Update Trip';
+        formWrap.classList.remove('hidden');
+        formWrap.scrollIntoView({ behavior: 'smooth' });
+    } catch (e) {
+        console.error('Error editing trip:', e);
+        alert('Failed to load trip for editing.');
+    }
+};
+
+// Delete trip
+window.deleteTrip = async function(tripId) {
+    try {
+        if (!confirm('Are you sure you want to delete this trip?')) return;
+        await deleteDoc(doc(db, 'trips', tripId));
+        await loadTrips(currentAgencyId);
+        await loadStats(currentAgencyId);
+    } catch (e) {
+        console.error('Error deleting trip:', e);
+        alert('Failed to delete trip: ' + (e.message || e));
+    }
+};
 
 // View Trip Bookings
 window.viewTripBookings = async function(tripId) {

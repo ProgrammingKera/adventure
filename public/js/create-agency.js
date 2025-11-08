@@ -7,6 +7,7 @@ import {
     getDocs,
     addDoc,
     doc,
+    getDoc,
     setDoc,
     updateDoc,
     serverTimestamp

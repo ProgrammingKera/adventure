@@ -12,11 +12,17 @@
             <a href="index.html" class="logo" aria-label="AI Trip Planner">
                 <img src="assets/inLogo.png" alt="AI Trip Planner Logo" class="logo-img">
             </a>
+            <button class="mobile-menu-toggle" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
             <ul class="nav-links center">
                 <li><a class="nav-link" href="index.html">Home</a></li>
                 <li><a class="nav-link" href="explore.html">Explore</a></li>
-                <li><a class="nav-link" href="plan-trip.html">Plan Trip</a></li>
+                <li><a class="nav-link" href="plan-trip.html">AI Plan Trip</a></li>
                 <li><a class="nav-link" href="image-predict.html">Image Predict</a></li>
+                <li><a class="nav-link active" href="profile.html">Profile</a></li>
             </ul>
             <a id="auth-btn" class="btn small btn-secondary auth-cta">Login</a>
         </nav>
@@ -70,8 +76,16 @@
                                 <textarea id="edit-bio" rows="4" placeholder="Tell us about yourself..."></textarea>
                             </div>
                             <div class="form-group">
-                                <label for="edit-image-url">Profile Image URL</label>
-                                <input type="url" id="edit-image-url" placeholder="https://example.com/image.jpg">
+                                <label for="profile-image-url">Profile Image</label>
+                                <div style="display: flex; gap: 0.5rem; align-items: flex-start;">
+                                    <input type="url" id="profile-image-url" 
+                                           placeholder="Image URL will appear here after upload"
+                                           style="flex: 1;" readonly>
+                                    <button type="button" id="profile-upload-btn" class="btn btn-secondary"
+                                            style="white-space: nowrap;">Upload Image</button>
+                                </div>
+                                <div id="profile-upload-status" style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-light);"></div>
+                                <small style="color: var(--text-light);">Click "Upload Image" to upload to Cloudinary</small>
                             </div>
                             <button type="submit" class="btn btn-primary" style="width:100%;">Update Profile</button>
                             <button type="button" class="btn btn-secondary" id="cancel-edit-btn" style="width:100%;margin-top:.5rem;">Cancel</button>

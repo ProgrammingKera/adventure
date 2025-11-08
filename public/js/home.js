@@ -1,5 +1,5 @@
 import { db, auth } from '../firebase.js';
-import { collection, getDocs, query, limit, orderBy, updateDoc, doc, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { collection, getDocs, query, limit, orderBy, updateDoc, doc, Timestamp, getDoc, addDoc, serverTimestamp, increment } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
 // Travel tips data (can be replaced with actual Firestore data)
@@ -92,16 +92,29 @@ async function loadFeaturedTrips() {
             return isNaN(d.getTime()) ? null : d;
         };
 
+        // Resolve trip date using multiple possible fields
+        const getTripDate = (trip) => {
+            if (!trip) return null;
+            // Prefer explicit startDate/startDateMillis used by mobile app
+            if (trip.startDate?.toDate) return trip.startDate.toDate();
+            if (typeof trip.startDateMillis === 'number') return new Date(trip.startDateMillis);
+            // Fallbacks: date/dateTimestamp
+            if (trip.date?.toDate) return trip.date.toDate();
+            if (typeof trip.dateTimestamp === 'number') return new Date(trip.dateTimestamp);
+            // Finally try parsing string date
+            return parseTripDate(trip.date);
+        };
+
         const now = new Date();
 
-        // Background-migrate: convert string dates to Timestamp for mobile app compatibility
+        // Background-migrate: add fields mobile apps commonly require
         (async () => {
             try {
                 await Promise.all(querySnapshot.docs.map(async (d) => {
                     const data = d.data();
                     const updates = {};
 
-                    // Convert string date to Timestamp
+                    // Convert string date to Timestamp and millis
                     if (data && typeof data.date === 'string') {
                         const parsed = parseTripDate(data.date);
                         if (parsed) {
@@ -110,22 +123,49 @@ async function loadFeaturedTrips() {
                         }
                     }
 
-                    // Add dateTimestamp if missing (for existing Timestamp dates)
+                    // Ensure dateTimestamp exists when date is Timestamp
                     if (data && data.date?.toDate && !data.dateTimestamp) {
                         const dateObj = data.date.toDate();
                         updates.dateTimestamp = dateObj.getTime();
                     }
 
-                    // Ensure location fields for mobile compatibility
-                    if (data && data.location) {
-                        const locationStr = String(data.location).trim();
-                        const locationLower = locationStr.toLowerCase();
-                        updates.locationNormalized = locationLower;
-                        updates.city = locationStr;
-                        updates.cityLower = locationLower;
+                    // Duplicate date into startDate/startDateMillis for mobile schemas
+                    if (data && data.date?.toDate && !data.startDate) {
+                        updates.startDate = data.date;
+                    }
+                    if ((data?.dateTimestamp || data?.date?.toDate) && !data?.startDateMillis) {
+                        const millis = data.dateTimestamp || data.date.toDate().getTime();
+                        updates.startDateMillis = millis;
                     }
 
-                    // Apply updates if any
+                    // Visibility/status defaults expected by many Flutter apps
+                    if (typeof data?.isPublished === 'undefined') {
+                        updates.isPublished = true;
+                    }
+                    if (!data?.status) {
+                        updates.status = 'active';
+                    }
+                    if (!data?.visibleFrom) {
+                        updates.visibleFrom = Timestamp.now();
+                    }
+
+                    // Created/updated millis for orderBy queries
+                    if (data?.createdAt?.toMillis && !data?.createdAtMillis) {
+                        updates.createdAtMillis = data.createdAt.toMillis();
+                    }
+                    if (data?.updatedAt?.toMillis && !data?.updatedAtMillis) {
+                        updates.updatedAtMillis = data.updatedAt.toMillis();
+                    }
+
+                    // Ensure location fields for mobile compatibility
+                    if (data?.location) {
+                        const locationStr = String(data.location).trim();
+                        const locationLower = locationStr.toLowerCase();
+                        if (!data.locationNormalized) updates.locationNormalized = locationLower;
+                        if (!data.city) updates.city = locationStr;
+                        if (!data.cityLower) updates.cityLower = locationLower;
+                    }
+
                     if (Object.keys(updates).length > 0) {
                         try {
                             await updateDoc(doc(db, 'trips', d.id), updates);
@@ -135,23 +175,23 @@ async function loadFeaturedTrips() {
             } catch (_) {}
         })();
 
-        // Keep only upcoming/valid trips, sort by soonest date, then limit to 6
-        const sortedDocs = querySnapshot.docs
-            .filter(doc => {
-                const d = parseTripDate(doc.data().date);
-                return d && d >= new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            })
-            .sort((a, b) => {
-                const da = parseTripDate(a.data().date) || new Date(8640000000000000);
-                const db = parseTripDate(b.data().date) || new Date(8640000000000000);
-                return da.getTime() - db.getTime(); // earliest first
-            })
-            .slice(0, 6);
+        // Keep only upcoming/valid trips
+        const upcomingDocs = querySnapshot.docs.filter(doc => {
+            const d = getTripDate(doc.data());
+            return d && d >= new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        });
+
+        // Sort by soonest date first
+        const selectedDocs = upcomingDocs.sort((a, b) => {
+            const da = getTripDate(a.data()) || new Date(8640000000000000);
+            const db = getTripDate(b.data()) || new Date(8640000000000000);
+            return da.getTime() - db.getTime();
+        });
         
-        tripsContainer.innerHTML = sortedDocs.map(doc => {
+        tripsContainer.innerHTML = selectedDocs.map(doc => {
             const trip = doc.data();
             const availableSeats = Math.max(0, (trip.totalSeats || 0) - (trip.bookedSeats || 0));
-            const dateObj = parseTripDate(trip.date);
+            const dateObj = getTripDate(trip);
             const dateDisplay = dateObj ? dateObj.toLocaleDateString() : 'N/A';
             const priceStr = `PKR ${Number(trip.pricePerSeat || 0).toLocaleString()} / seat`;
             const titleLocation = trip.location || 'N/A';
@@ -288,8 +328,9 @@ window.bookTripFromHome = async function(tripId) {
 
 // Check auth state
 onAuthStateChanged(auth, (user) => {
+    const profileLink = document.getElementById('profile-link');
+    if (!profileLink) return; // Element may not exist on this page
     if (user) {
-        const profileLink = document.getElementById('profile-link');
         profileLink.textContent = 'Profile';
     }
 });

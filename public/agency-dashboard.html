@@ -68,10 +68,16 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="trip-image-url">Trip Image URL *</label>
-                        <input type="url" id="trip-image-url" required 
-                               placeholder="https://example.com/image.jpg">
-                        <small style="color: var(--text-light);">You can use image hosting services like Cloudinary, Imgur, etc.</small>
+                        <label for="trip-image-url">Trip Image *</label>
+                        <div style="display: flex; gap: 0.5rem; align-items: flex-start;">
+                            <input type="url" id="trip-image-url" required 
+                                   placeholder="Image URL will appear here after upload"
+                                   style="flex: 1;" readonly>
+                            <button type="button" id="cloudinary-upload-btn" class="btn btn-secondary"
+                                    style="white-space: nowrap;">Upload Image</button>
+                        </div>
+                        <div id="upload-status" style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-light);"></div>
+                        <small style="color: var(--text-light);">Click "Upload Image" to upload to Cloudinary</small>
                     </div>
 
                     <div class="form-group">
@@ -106,21 +112,20 @@
 
             <!-- Trips List -->
             <section class="section">
-                <h2 class="section-title">My Trips</h2>
+                <h1 class="section-title">My Trips</h1>
                 <style>
-                    /* Scoped styles for trips grid */
-                    .trips-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
-                    .trip-card { border: 1px solid #e9ecef; border-radius: 12px; overflow: hidden; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.04); transition: box-shadow .2s ease, transform .2s ease; }
+                    .trips-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+                    .trip-card { display: flex; flex-direction: column; border: 1px solid #e9ecef; border-radius: 12px; overflow: hidden; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.04); transition: box-shadow .2s ease, transform .2s ease; }
                     .trip-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.08); transform: translateY(-2px); }
                     .trip-media { position: relative; aspect-ratio: 16/9; background: #f6f7f9; }
                     .trip-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
-                    .trip-content { padding: 1rem; display: flex; flex-direction: column; gap: .5rem; }
-                    .trip-title { font-size: 1rem; font-weight: 600; color: #111; margin: 0; line-height: 1.3; }
-                    .trip-sub { color: var(--text-light); font-size: .9rem; }
-                    .trip-price { color: var(--primary-color); font-weight: 700; font-size: 1rem; }
-                    .chip-row { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .25rem; }
+                    .trip-content { padding: 1rem; display: flex; flex-direction: column; gap: .6rem; align-items: center; flex: 1; }
+                    .trip-title { font-size: 1.05rem; font-weight: 700; color: #111; margin: 0; line-height: 1.3; text-align: center; }
+                    .trip-sub { color: var(--text-light); font-size: .92rem; text-align: center; }
+                    .trip-price { color: var(--primary-color); font-weight: 800; font-size: 1rem; }
+                    .chip-row { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .25rem; justify-content: center; }
                     .chip { background: #f1f3f5; color: #495057; border-radius: 999px; padding: .25rem .6rem; font-size: .8rem; }
-                    .trip-actions { margin-top: .5rem; }
+                    .trip-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; margin-top: auto; }
                     .trip-actions .btn { width: 100%; }
                 </style>
                 <div id="trips-container" class="trips-grid"></div>
@@ -162,4 +167,3 @@
     <script type="module" src="js/agency-dashboard.js"></script>
 </body>
 </html>
-

@@ -2,8 +2,12 @@ import { db, auth } from '../firebase.js';
 import { collection, getDocs, query, where, doc, getDoc, updateDoc, increment, addDoc, serverTimestamp, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
-// Popular cities in Pakistan
-const cities = ['Islamabad', 'Lahore', 'Karachi', 'Hunza', 'Skardu', 'Swat', 'Naran', 'Murree'];
+// Navigation state
+let currentView = 'cities'; // 'cities', 'agencies', 'trips'
+let selectedCity = null;
+let selectedAgency = null;
+let allTrips = [];
+let allAgencies = [];
 
 // Shared date parser for both loaders and renderers
 function parseTripDate(dateVal) {
@@ -23,7 +27,7 @@ function parseTripDate(dateVal) {
     return isNaN(d.getTime()) ? null : d;
 }
 
-// Load all trips and group by city
+// Load all data
 async function loadDestinations() {
     try {
         const citiesContainer = document.getElementById('cities-container');
@@ -36,10 +40,13 @@ async function loadDestinations() {
         const agenciesRef = collection(db, 'agencies');
         const agenciesSnapshot = await getDocs(agenciesRef);
         
+        // Store agencies globally
+        allAgencies = [];
         const agenciesMap = {};
         agenciesSnapshot.forEach(doc => {
-            const agency = doc.data();
+            const agency = { id: doc.id, ...doc.data() };
             agenciesMap[doc.id] = agency;
+            allAgencies.push(agency);
         });
         
         const today = new Date();
@@ -86,57 +93,41 @@ async function loadDestinations() {
             } catch (_) {}
         })();
 
-        // Group trips by location
-        const tripsByCity = {};
-        
+        // Store trips globally
+        allTrips = [];
         tripsSnapshot.forEach(doc => {
             const trip = doc.data();
-            const rawLocation = trip.location || 'Other';
-            const displayLocation = String(rawLocation).trim();
             const d = parseTripDate(trip.date);
-
-            if (!tripsByCity[displayLocation]) {
-                tripsByCity[displayLocation] = [];
-            }
-
-            tripsByCity[displayLocation].push({
+            allTrips.push({
                 id: doc.id,
                 ...trip,
-                _parsedDate: d, // attach parsed date for sorting
+                _parsedDate: d,
                 agency: agenciesMap[trip.agencyId]
             });
         });
         
-        // Build list of cities sorted by number of trips
+        // Group trips by city
+        const tripsByCity = {};
+        allTrips.forEach(trip => {
+            const city = String(trip.location || 'Other').trim();
+            if (!tripsByCity[city]) {
+                tripsByCity[city] = [];
+            }
+            tripsByCity[city].push(trip);
+        });
+        
+        // Build list of cities
         const cityEntries = Object.entries(tripsByCity)
-            .map(([city, arr]) => ({ city, trips: arr }))
-            .sort((a, b) => b.trips.length - a.trips.length);
+            .map(([city, trips]) => ({ city, count: trips.length }))
+            .sort((a, b) => b.count - a.count);
 
         if (cityEntries.length === 0) {
-            citiesContainer.innerHTML = '<p style="padding:1rem; color: var(--text-light);">No trips available yet.</p>';
+            citiesContainer.innerHTML = '<p style="padding:1rem; color: var(--text-light);">No destinations available yet.</p>';
             return;
         }
         
-        // Render city cards
-        citiesContainer.innerHTML = cityEntries.map((item, idx) => `
-            <div class="city-card ${idx===0 ? 'active' : ''}" data-city="${item.city}">
-                <div class="city-name">${item.city}</div>
-                <div class="city-meta">${item.trips.length} trip(s)</div>
-            </div>
-        `).join('');
-
-        // Render first city by default
-        renderCityTrips(cityEntries[0].city, cityEntries[0].trips);
-
-        // Attach handlers
-        document.querySelectorAll('.city-card').forEach(card => {
-            card.addEventListener('click', () => {
-                document.querySelectorAll('.city-card').forEach(c => c.classList.remove('active'));
-                card.classList.add('active');
-                const name = card.getAttribute('data-city');
-                renderCityTrips(name, tripsByCity[name]);
-            });
-        });
+        // Render cities
+        renderCities(cityEntries);
         
     } catch (error) {
         console.error('Error loading destinations:', error);
@@ -148,20 +139,142 @@ async function loadDestinations() {
     }
 }
 
-function renderCityTrips(city, trips) {
-    document.getElementById('city-title').textContent = city + ' Trips';
-    const container = document.getElementById('city-trips');
-    if (!trips || trips.length === 0) {
-        container.innerHTML = '<p style="color: var(--text-light);">No trips for this city yet.</p>';
+// Render cities list
+function renderCities(cityEntries) {
+    currentView = 'cities';
+    selectedCity = null;
+    selectedAgency = null;
+    
+    // Update breadcrumb
+    document.getElementById('breadcrumb-home').style.fontWeight = '700';
+    document.getElementById('breadcrumb-home').style.color = 'var(--text-dark)';
+    document.getElementById('breadcrumb-sep1').style.display = 'none';
+    document.getElementById('breadcrumb-city').style.display = 'none';
+    document.getElementById('breadcrumb-sep2').style.display = 'none';
+    document.getElementById('breadcrumb-agency').style.display = 'none';
+    
+    // Show cities, hide agencies
+    document.getElementById('cities-container').style.display = 'grid';
+    document.getElementById('agencies-container').style.display = 'none';
+    
+    const citiesContainer = document.getElementById('cities-container');
+    citiesContainer.innerHTML = cityEntries.map((item, idx) => `
+        <div class="city-card" data-city="${item.city}">
+            <div class="city-name">${item.city}</div>
+            <div class="city-meta">${item.count} trip(s)</div>
+        </div>
+    `).join('');
+    
+    // Update content area
+    document.getElementById('content-title').textContent = 'Select a City';
+    document.getElementById('content-area').innerHTML = '<p style="color: var(--text-light); text-align: center; padding: 2rem;">Click on a city to view agencies</p>';
+    
+    // Attach click handlers
+    document.querySelectorAll('.city-card').forEach(card => {
+        card.addEventListener('click', () => {
+            const city = card.getAttribute('data-city');
+            showAgenciesForCity(city);
+        });
+    });
+}
+
+// Show agencies for selected city
+function showAgenciesForCity(city) {
+    currentView = 'agencies';
+    selectedCity = city;
+    selectedAgency = null;
+    
+    // Update breadcrumb
+    document.getElementById('breadcrumb-home').style.fontWeight = '600';
+    document.getElementById('breadcrumb-home').style.color = 'var(--primary-color)';
+    document.getElementById('breadcrumb-sep1').style.display = 'inline';
+    document.getElementById('breadcrumb-city').style.display = 'inline';
+    document.getElementById('breadcrumb-city').textContent = city;
+    document.getElementById('breadcrumb-city').style.fontWeight = '700';
+    document.getElementById('breadcrumb-city').style.color = 'var(--text-dark)';
+    document.getElementById('breadcrumb-sep2').style.display = 'none';
+    document.getElementById('breadcrumb-agency').style.display = 'none';
+    
+    // Get agencies that have trips in this city
+    const cityTrips = allTrips.filter(t => String(t.location || '').trim() === city);
+    const agencyIds = [...new Set(cityTrips.map(t => t.agencyId).filter(Boolean))];
+    const cityAgencies = allAgencies.filter(a => agencyIds.includes(a.id));
+    
+    // Count trips per agency
+    const agenciesWithCount = cityAgencies.map(agency => {
+        const count = cityTrips.filter(t => t.agencyId === agency.id).length;
+        return { ...agency, tripCount: count };
+    }).sort((a, b) => b.tripCount - a.tripCount);
+    
+    // Hide cities, show agencies
+    document.getElementById('cities-container').style.display = 'none';
+    document.getElementById('agencies-container').style.display = 'grid';
+    
+    const agenciesContainer = document.getElementById('agencies-container');
+    if (agenciesWithCount.length === 0) {
+        agenciesContainer.innerHTML = '<p style="padding:1rem; color: var(--text-light);">No agencies found for this city.</p>';
+        document.getElementById('content-area').innerHTML = '';
         return;
     }
-    // Sort: upcoming first (earliest to latest), then past (latest to earliest), then undated
+    
+    agenciesContainer.innerHTML = agenciesWithCount.map(agency => `
+        <div class="city-card" data-agency-id="${agency.id}">
+            <div class="city-name">${agency.name || 'Agency'}</div>
+            <div class="city-meta">${agency.tripCount} trip(s)</div>
+        </div>
+    `).join('');
+    
+    // Update content area
+    document.getElementById('content-title').textContent = `${city} - Select Agency`;
+    document.getElementById('content-area').innerHTML = '<p style="color: var(--text-light); text-align: center; padding: 2rem;">Click on an agency to view their trips</p>';
+    
+    // Attach click handlers
+    document.querySelectorAll('[data-agency-id]').forEach(card => {
+        card.addEventListener('click', () => {
+            const agencyId = card.getAttribute('data-agency-id');
+            const agency = allAgencies.find(a => a.id === agencyId);
+            showTripsForAgency(city, agency);
+        });
+    });
+}
+
+// Show trips for selected agency in selected city
+function showTripsForAgency(city, agency) {
+    currentView = 'trips';
+    selectedAgency = agency;
+    
+    // Update breadcrumb
+    document.getElementById('breadcrumb-city').style.fontWeight = '600';
+    document.getElementById('breadcrumb-city').style.color = 'var(--primary-color)';
+    document.getElementById('breadcrumb-sep2').style.display = 'inline';
+    document.getElementById('breadcrumb-agency').style.display = 'inline';
+    document.getElementById('breadcrumb-agency').textContent = agency.name || 'Agency';
+    
+    // Filter trips
+    const trips = allTrips.filter(t => 
+        String(t.location || '').trim() === city && t.agencyId === agency.id
+    );
+    
+    // Update content
+    document.getElementById('content-title').textContent = `${agency.name || 'Agency'} - ${city} Trips`;
+    renderTrips(trips);
+}
+
+// Render trips
+function renderTrips(trips) {
+    const container = document.getElementById('content-area');
+    
+    if (!trips || trips.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-light); text-align: center; padding: 2rem;">No trips available.</p>';
+        return;
+    }
+    
+    // Sort trips
     const today = new Date();
     const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const getDate = (t) => t._parsedDate ?? parseTripDate(t.date);
     const sorted = [...trips].sort((a, b) => {
-        const da = getDate(a);
-        const db = getDate(b);
+        const da = a._parsedDate;
+        const db = b._parsedDate;
         const group = (d) => (d ? (d >= startOfToday ? 0 : 1) : 2);
         const ga = group(da);
         const gb = group(db);
@@ -169,13 +282,12 @@ function renderCityTrips(city, trips) {
         if (!da && !db) return 0;
         if (!da) return 1;
         if (!db) return -1;
-        // Upcoming: earlier first; Past: later first
         return ga === 0 ? da - db : db - da;
     });
-
+    
     container.innerHTML = sorted.map(trip => {
         const availableSeats = Math.max(0, (trip.totalSeats || 0) - (trip.bookedSeats || 0));
-        const d = parseTripDate(trip.date);
+        const d = trip._parsedDate;
         const dateDisplay = d ? d.toLocaleDateString() : 'N/A';
         const priceStr = `PKR ${Number(trip.pricePerSeat || 0).toLocaleString()} / seat`;
         return `
@@ -183,7 +295,6 @@ function renderCityTrips(city, trips) {
                 ${trip.imageUrl ? `<img src="${trip.imageUrl}" alt="${trip.description || 'Trip'}" class="card-image">` : ''}
                 <div class="card-content">
                     <h4 class="card-title">${trip.description || 'Trip'}</h4>
-                    <div class="card-text"><strong>Agency:</strong> ${trip.agency?.name || 'N/A'}</div>
                     <div class="card-text"><strong>Departure:</strong> ${trip.departure || 'N/A'}</div>
                     <div class="card-meta">
                         <span><strong>Seats:</strong> ${availableSeats}/${trip.totalSeats || 0}</span>
@@ -202,6 +313,19 @@ function renderCityTrips(city, trips) {
         `;
     }).join('');
 }
+
+// Breadcrumb navigation
+document.getElementById('breadcrumb-home').addEventListener('click', () => {
+    if (currentView !== 'cities') {
+        loadDestinations();
+    }
+});
+
+document.getElementById('breadcrumb-city').addEventListener('click', () => {
+    if (currentView === 'trips' && selectedCity) {
+        showAgenciesForCity(selectedCity);
+    }
+});
 
 // Global function for booking
 window.bookTrip = async function(tripId) {

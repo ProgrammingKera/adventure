@@ -12,12 +12,18 @@
             <a href="index.html" class="logo" aria-label="AI Trip Planner">
                 <img src="assets/inLogo.png" alt="AI Trip Planner Logo" class="logo-img">
             </a>
+<button class="mobile-menu-toggle" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
             <ul class="nav-links center">
                 <li><a class="nav-link" href="index.html">Home</a></li>
                 <li><a class="nav-link" href="explore.html">Explore</a></li>
-                <li><a class="nav-link" href="plan-trip.html">Plan Trip</a></li>
+                <li><a class="nav-link" href="plan-trip.html">AI Plan Trip</a></li>
                 <li><a class="nav-link" href="image-predict.html">Image Predict</a></li>
                 <li><a class="nav-link" href="profile.html">Profile</a></li>
+                
             </ul>
             <a id="auth-btn" class="btn small btn-secondary auth-cta">Login</a>
         </nav>
@@ -26,18 +32,34 @@
     <div class="container">
         <section class="section">
             <h2 class="section-title">Explore Destinations</h2>
+            
+            <!-- Breadcrumb Navigation -->
+            <div id="breadcrumb" style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; color: var(--text-light); font-size: 0.95rem;">
+                <span id="breadcrumb-home" style="cursor: pointer; color: var(--primary-color); font-weight: 600;">Cities</span>
+                <span id="breadcrumb-sep1" style="display: none;">›</span>
+                <span id="breadcrumb-city" style="display: none; cursor: pointer; color: var(--primary-color);"></span>
+                <span id="breadcrumb-sep2" style="display: none;">›</span>
+                <span id="breadcrumb-agency" style="display: none; color: var(--text-dark); font-weight: 600;"></span>
+            </div>
+            
             <div class="explore-layout">
                 <aside class="city-panel">
+                    <!-- Cities List -->
                     <div id="cities-container" class="city-grid">
                         <div class="loading">
                             <div class="spinner"></div>
                             <p>Loading destinations...</p>
                         </div>
                     </div>
+                    
+                    <!-- Agencies List (hidden by default) -->
+                    <div id="agencies-container" class="city-grid" style="display: none;">
+                    </div>
                 </aside>
+                
                 <main class="trips-panel">
-                    <div id="city-title" class="section-title" style="margin-top:0; font-size:1.5rem;">Trips</div>
-                    <div id="city-trips" class="card-grid uniform-cards"></div>
+                    <div id="content-title" class="section-title" style="margin-top:0; font-size:1.5rem;">Select a City</div>
+                    <div id="content-area" class="card-grid uniform-cards"></div>
                 </main>
             </div>
         </section>

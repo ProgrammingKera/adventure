@@ -51,6 +51,8 @@ document.getElementById('signup-form-element').addEventListener('submit', async 
             bio: null,
             city: null,
             userType: 'USER',
+            activeRole: 'TRAVELER',
+            roles: ['TRAVELER'],
             createdAt: serverTimestamp()
         };
 

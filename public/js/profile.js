@@ -15,16 +15,63 @@ import {
     updateDoc,
     serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { formatStructuredPlan } from './plan-trip.js';
 
+// Cloudinary Upload Handler for Profile
+const profileUploadBtn = document.getElementById('profile-upload-btn');
+if (profileUploadBtn) {
+    profileUploadBtn.addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            if (file.size > 10 * 1024 * 1024) {
+                alert('Image size should be less than 10MB');
+                return;
+            }
+            
+            const statusDiv = document.getElementById('profile-upload-status');
+            const urlInput = document.getElementById('profile-image-url');
+            
+            try {
+                statusDiv.textContent = 'Processing...';
+                statusDiv.style.color = 'var(--primary-color)';
+                profileUploadBtn.disabled = true;
+                
+                // Convert to base64 for mobile compatibility
+                const reader = new FileReader();
+                reader.onload = async (event) => {
+                    const base64String = event.target.result;
+                    urlInput.value = base64String;
+                    
+                    statusDiv.textContent = '✓ Image ready!';
+                    statusDiv.style.color = 'green';
+                    
+                    setTimeout(() => {
+                        statusDiv.textContent = '';
+                    }, 3000);
+                };
+                reader.readAsDataURL(file);
+            } finally {
+                profileUploadBtn.disabled = false;
+            }
+        };
+        
+        input.click();
+    });
+}
 
 // Logout
 document.getElementById('logout-btn')?.addEventListener('click', async () => {
     try {
         await signOut(auth);
-        alert('Logged out successfully!');
+        window.location.href = 'login.html';
     } catch (error) {
-        console.error('Logout error:', error);
-        alert('Error logging out: ' + error.message);
+        alert('Logout failed: ' + error.message);
     }
 });
 
@@ -58,7 +105,7 @@ document.getElementById('update-profile-form')?.addEventListener('submit', async
             city: document.getElementById('edit-city').value.trim() || null,
             phone: document.getElementById('edit-phone').value.trim() || null,
             bio: document.getElementById('edit-bio').value.trim() || null,
-            imageUrl: document.getElementById('edit-image-url').value.trim() || null,
+            imageUrl: document.getElementById('profile-image-url').value.trim() || null,
             updatedAt: serverTimestamp()
         };
         
@@ -131,7 +178,12 @@ async function loadUserProfile() {
         document.getElementById('edit-city').value = userData.city || '';
         document.getElementById('edit-phone').value = userData.phone || '';
         document.getElementById('edit-bio').value = userData.bio || '';
-        document.getElementById('edit-image-url').value = userData.imageUrl || '';
+        
+        // Populate image URL if exists
+        const profileImageUrlInput = document.getElementById('profile-image-url');
+        if (profileImageUrlInput && userData.imageUrl) {
+            profileImageUrlInput.value = userData.imageUrl;
+        }
 
         // Check if user owns an agency and toggle buttons accordingly
         const agenciesRef = collection(db, 'agencies');
@@ -255,8 +307,39 @@ window.viewSavedPlan = async function(planId) {
             return;
         }
 
-        const plan = planDoc.data();
-        const formattedPlan = escapeHtml(plan.plan).replace(/\n/g, '<br>');
+        const savedPlan = planDoc.data();
+        
+        // Check if we have structured planData
+        let formattedContent;
+        if (savedPlan.planData) {
+            // Use the same beautiful format
+            try {
+                const formData = {
+                    destination: savedPlan.destination,
+                    startDate: savedPlan.startDate,
+                    endDate: savedPlan.endDate,
+                    numberOfPeople: savedPlan.numberOfPeople,
+                    budget: savedPlan.budget
+                };
+                formattedContent = formatStructuredPlan(savedPlan.planData, formData);
+            } catch (formatError) {
+                console.error('Error formatting plan:', formatError);
+                alert('Error displaying plan. Please try again.');
+                return;
+            }
+        } else {
+            // Fallback for old text-based plans
+            formattedContent = `
+                <div style="padding: 2rem; max-width: 800px; margin: 0 auto;">
+                    <h1 style="color: #006734;">Trip Plan: ${escapeHtml(savedPlan.destination)}</h1>
+                    <div style="margin: 1rem 0;"><strong>Duration:</strong> ${escapeHtml(savedPlan.startDate)} to ${escapeHtml(savedPlan.endDate)}</div>
+                    <div style="margin: 1rem 0;"><strong>Travelers:</strong> ${savedPlan.numberOfPeople}</div>
+                    <div style="margin: 1rem 0;"><strong>Budget:</strong> ${escapeHtml(savedPlan.budget)}</div>
+                    <hr style="margin: 2rem 0;">
+                    <div>${escapeHtml(savedPlan.plan || '').replace(/\n/g, '<br>')}</div>
+                </div>
+            `;
+        }
 
         const newWindow = window.open('', '_blank');
         newWindow.document.write(`
@@ -265,29 +348,64 @@ window.viewSavedPlan = async function(planId) {
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Saved Trip Plan - ${escapeHtml(plan.destination)}</title>
+                <title>Saved Trip Plan - ${escapeHtml(savedPlan.destination)}</title>
                 <style>
-                    body { font-family: Arial, sans-serif; padding: 2rem; max-width: 800px; margin: 0 auto; line-height: 1.6; }
-                    h1 { color: #006734; border-bottom: 2px solid #006734; padding-bottom: 0.5rem; }
-                    .info { margin: 1rem 0; }
-                    .info strong { display: inline-block; width: 120px; }
-                    hr { margin: 2rem 0; border: 1px solid #eee; }
+                    * {
+                        margin: 0;
+                        padding: 0;
+                        box-sizing: border-box;
+                    }
+                    :root {
+                        --primary-color: #006734;
+                        --primary-dark: #004d26;
+                        --primary-light: #008045;
+                        --text-dark: #333;
+                        --text-light: #666;
+                    }
+                    body { 
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                        margin: 0;
+                        padding: 0;
+                        background: #f9f9f9;
+                        line-height: 1.6;
+                        color: #333;
+                    }
+                    .btn {
+                        display: inline-block;
+                        padding: 0.75rem 2rem;
+                        border: none;
+                        border-radius: 5px;
+                        cursor: pointer;
+                        font-size: 1rem;
+                        font-weight: 600;
+                        transition: all 0.3s ease;
+                    }
+                    .btn-primary {
+                        background: var(--primary-color);
+                        color: white;
+                    }
+                    .btn-primary:hover {
+                        background: var(--primary-dark);
+                        transform: translateY(-2px);
+                        box-shadow: 0 4px 12px rgba(0,103,52,0.3);
+                    }
+                    @media print {
+                        .no-print { display: none !important; }
+                    }
                 </style>
             </head>
             <body>
-                <h1>Trip Plan: ${escapeHtml(plan.destination)}</h1>
-                <div class="info"><strong>Duration:</strong> ${escapeHtml(plan.startDate)} to ${escapeHtml(plan.endDate)}</div>
-                <div class="info"><strong>Travelers:</strong> ${plan.numberOfPeople}</div>
-                <div class="info"><strong>Budget:</strong> ${escapeHtml(plan.budget)}</div>
-                <hr>
-                <div>${formattedPlan}</div>
+                <div style="padding: 2rem 1rem; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 2rem;" class="no-print">
+                    <button onclick="window.print()" style="padding: 0.75rem 2rem; background: var(--primary-color); color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem; font-weight: 600;">Print Plan</button>
+                    <button onclick="window.close()" style="padding: 0.75rem 2rem; background: #666; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem; font-weight: 600; margin-left: 1rem;">Close</button>
+                </div>
+                ${formattedContent}
             </body>
             </html>
         `);
         newWindow.document.close();
     } catch (error) {
-        console.error('Error viewing plan:', error);
-        alert('Failed to load plan.');
+        alert('Failed to load plan: ' + error.message);
     }
 };
 

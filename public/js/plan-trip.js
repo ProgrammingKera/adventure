@@ -2,19 +2,38 @@ import { db, auth } from '../firebase.js';
 import { collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
-// Set minimum date to today
-const today = new Date().toISOString().split('T')[0];
-document.getElementById('startDate').setAttribute('min', today);
-document.getElementById('endDate').setAttribute('min', today);
-
-// Update end date minimum when start date changes
-document.getElementById('startDate').addEventListener('change', function() {
-    const startDate = this.value;
-    document.getElementById('endDate').setAttribute('min', startDate);
+// Check if user is logged in
+let isAuthChecked = false;
+onAuthStateChanged(auth, (user) => {
+    if (!isAuthChecked) {
+        isAuthChecked = true;
+        if (!user) {
+            alert('Please login to use AI Trip Planner feature!');
+            window.location.href = 'login.html';
+        }
+    }
 });
 
-// Handle form submission
-document.getElementById('trip-plan-form').addEventListener('submit', async function(e) {
+// Set minimum date to today (only if elements exist)
+const today = new Date().toISOString().split('T')[0];
+const startDateEl = document.getElementById('startDate');
+const endDateEl = document.getElementById('endDate');
+
+if (startDateEl && endDateEl) {
+    startDateEl.setAttribute('min', today);
+    endDateEl.setAttribute('min', today);
+    
+    // Update end date minimum when start date changes
+    startDateEl.addEventListener('change', function() {
+        const startDate = this.value;
+        endDateEl.setAttribute('min', startDate);
+    });
+}
+
+// Handle form submission (only if form exists)
+const tripPlanForm = document.getElementById('trip-plan-form');
+if (tripPlanForm) {
+    tripPlanForm.addEventListener('submit', async function(e) {
     e.preventDefault();
     
     const submitButton = e.target.querySelector('button[type="submit"]');
@@ -68,26 +87,138 @@ document.getElementById('trip-plan-form').addEventListener('submit', async funct
         const data = await response.json();
         
         if (data.success && data.plan) {
-            // Format and display the plan
-            const formattedPlan = formatPlan(data.plan);
+            // Try multiple strategies to get valid plan data
+            let finalPlan = null;
             
-            planResult.innerHTML = `
-                <div class="plan-container">
-                    <h2 style="color: var(--primary-color); margin-bottom: 1rem;">✨ Your AI-Generated Trip Plan</h2>
-                    <div style="margin-bottom: 1.5rem; padding: 1.5rem; background: #f0f9f4; border-radius: 5px; border-left: 4px solid var(--primary-color);">
-                        <p style="margin: 0.5rem 0;"><strong>📍 Destination:</strong> ${formData.destination}</p>
-                        <p style="margin: 0.5rem 0;"><strong>📅 Duration:</strong> ${formData.startDate} to ${formData.endDate}</p>
-                        <p style="margin: 0.5rem 0;"><strong>👥 Travelers:</strong> ${formData.numberOfPeople} person(s)</p>
-                        <p style="margin: 0.5rem 0;"><strong>💰 Budget:</strong> ${formData.budget}</p>
-                    </div>
-                    <div class="plan-content" style="line-height: 1.8; color: var(--text-dark);">
-                        ${formattedPlan}
-                    </div>
-                    <button class="btn btn-primary" onclick="savePlan()" style="margin-top: 1.5rem; width: 100%;">
-                        💾 Save Plan
-                    </button>
-                </div>
-            `;
+            // Strategy 1: Check if plan already has structured data
+            if (data.plan.weather && data.plan.touristAttractions && !data.plan.error) {
+                console.log('✓ Using structured plan data from backend');
+                finalPlan = data.plan;
+            }
+            // Strategy 2: Try to parse rawResponse if available
+            else if (data.plan.rawResponse || data.plan.needsFrontendParsing) {
+                console.log('⚠ Attempting frontend parsing of raw response...');
+                const rawText = data.plan.rawResponse;
+                
+                if (rawText) {
+                    // Try multiple parsing strategies
+                    const parseStrategies = [
+                        // Strategy A: Direct parse
+                        () => {
+                            let text = rawText.trim();
+                            // Remove markdown code blocks
+                            if (text.includes('```json')) {
+                                const match = text.match(/```json\s*([\s\S]*?)\s*```/);
+                                if (match) text = match[1].trim();
+                            } else if (text.includes('```')) {
+                                const match = text.match(/```\s*([\s\S]*?)\s*```/);
+                                if (match) text = match[1].trim();
+                            }
+                            // Extract JSON object
+                            const jsonMatch = text.match(/\{[\s\S]*\}/);
+                            if (jsonMatch) text = jsonMatch[0];
+                            return JSON.parse(text);
+                        },
+                        // Strategy B: Fix trailing commas
+                        () => {
+                            let text = rawText.trim();
+                            if (text.includes('```')) {
+                                const match = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+                                if (match) text = match[1].trim();
+                            }
+                            const jsonMatch = text.match(/\{[\s\S]*\}/);
+                            if (jsonMatch) text = jsonMatch[0];
+                            text = text.replace(/,(\s*[}\]])/g, '$1');
+                            return JSON.parse(text);
+                        },
+                        // Strategy C: Extract largest JSON object
+                        () => {
+                            const matches = rawText.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g);
+                            if (matches && matches.length > 0) {
+                                const sorted = matches.sort((a, b) => b.length - a.length);
+                                for (const match of sorted) {
+                                    try {
+                                        const parsed = JSON.parse(match);
+                                        if (parsed.weather || parsed.touristAttractions) {
+                                            return parsed;
+                                        }
+                                    } catch (e) {
+                                        continue;
+                                    }
+                                }
+                            }
+                            throw new Error('No valid JSON found');
+                        }
+                    ];
+                    
+                    // Try each strategy
+                    for (let i = 0; i < parseStrategies.length; i++) {
+                        try {
+                            const parsed = parseStrategies[i]();
+                            if (parsed && (parsed.weather || parsed.touristAttractions)) {
+                                console.log(`✓ Successfully parsed using strategy ${String.fromCharCode(65 + i)}`);
+                                finalPlan = parsed;
+                                break;
+                            }
+                        } catch (err) {
+                            console.log(`✗ Strategy ${String.fromCharCode(65 + i)} failed:`, err.message);
+                        }
+                    }
+                }
+            }
+            
+            // Last resort: Try to extract partial data
+            if (!finalPlan || (!finalPlan.weather && !finalPlan.touristAttractions)) {
+                console.warn('Could not parse complete plan, attempting partial extraction...');
+                
+                // Try to extract any valid sections from raw response
+                if (data.plan.rawResponse) {
+                    const rawText = data.plan.rawResponse;
+                    finalPlan = {
+                        weather: extractSection(rawText, 'weather') || [],
+                        touristAttractions: extractSection(rawText, 'touristAttractions') || [],
+                        restaurants: extractSection(rawText, 'restaurants') || [],
+                        packingEssentials: extractSection(rawText, 'packingEssentials') || [],
+                        accommodations: extractSection(rawText, 'accommodations') || [],
+                        localTransportation: extractSection(rawText, 'localTransportation') || { options: [] },
+                        localEvents: extractSection(rawText, 'localEvents') || [],
+                        tripCost: extractSection(rawText, 'tripCost') || {},
+                        safetyTips: extractSection(rawText, 'safetyTips') || []
+                    };
+                    
+                    // Check if we got at least some data
+                    if (finalPlan.weather.length > 0 || finalPlan.touristAttractions.length > 0) {
+                        console.log('✓ Partial data extracted successfully');
+                    } else {
+                        // Complete failure
+                        console.error('Failed to parse AI response. Raw response:', data.plan.rawResponse);
+                        planResult.innerHTML = `
+                            <div class="alert alert-error">
+                                <strong>Error:</strong> Could not parse the AI response.<br>
+                                <small>The AI returned data in an unexpected format. Please try generating the plan again.</small>
+                                ${data.plan.parseError ? `<br><small style="color: #999; margin-top: 0.5rem; display: block;">Technical: ${data.plan.parseError}</small>` : ''}
+                            </div>
+                        `;
+                        return;
+                    }
+                } else {
+                    planResult.innerHTML = `
+                        <div class="alert alert-error">
+                            <strong>Error:</strong> No response received from AI.<br>
+                            <small>Please try again.</small>
+                        </div>
+                    `;
+                    return;
+                }
+            }
+            
+            // Store plan data globally for saving
+            window.currentPlanData = finalPlan;
+            window.currentFormData = formData;
+            
+            // Display the structured plan
+            const formattedPlan = formatStructuredPlan(finalPlan, formData);
+            planResult.innerHTML = formattedPlan;
             
             // Scroll to plan result
             planResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -109,123 +240,439 @@ document.getElementById('trip-plan-form').addEventListener('submit', async funct
         submitButton.disabled = false;
         submitButton.textContent = originalText;
     }
-});
+    });
+}
 
-// Format the plan text for better display
+// Format structured JSON plan with modern, beautiful design
+export function formatStructuredPlan(plan, formData) {
+    let html = `
+        <style>
+            @keyframes fadeInUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(20px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            .plan-section {
+                animation: fadeInUp 0.6s ease-out;
+            }
+            .modern-card {
+                transition: all 0.3s ease;
+                background: white;
+                border-radius: 16px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+                overflow: hidden;
+            }
+            .modern-card:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+            }
+            .gradient-bg {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            }
+            .section-title {
+                background: linear-gradient(135deg, var(--primary-color) 0%, #2d8659 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                font-weight: 700;
+                font-size: 1.75rem;
+            }
+        </style>
+        <div class="plan-container" style="max-width: 1200px; margin: 0 auto; padding: 2rem;">
+            <!-- Header Section -->
+            <div class="plan-section" style="text-align: center; margin-bottom: 3rem;">
+                <h1 style="font-size: 2.5rem; font-weight: 800; background: linear-gradient(135deg, var(--primary-color) 0%, #2d8659 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 1rem;">
+                    ✨ Your Perfect Trip Plan
+                </h1>
+                <div style="display: inline-flex; gap: 2rem; padding: 1.5rem 2.5rem; background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%); border-radius: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); margin-top: 1.5rem;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 0.85rem; color: #666; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 1px;">📍 Destination</div>
+                        <div style="font-size: 1.2rem; font-weight: 700; color: var(--primary-color);">${formData.destination}</div>
+                    </div>
+                    <div style="width: 1px; background: #e0e0e0;"></div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 0.85rem; color: #666; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 1px;">📅 Duration</div>
+                        <div style="font-size: 1.2rem; font-weight: 700; color: var(--primary-color);">${formData.startDate} to ${formData.endDate}</div>
+                    </div>
+                    <div style="width: 1px; background: #e0e0e0;"></div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 0.85rem; color: #666; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 1px;">👥 Travelers</div>
+                        <div style="font-size: 1.2rem; font-weight: 700; color: var(--primary-color);">${formData.numberOfPeople}</div>
+                    </div>
+                    <div style="width: 1px; background: #e0e0e0;"></div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 0.85rem; color: #666; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 1px;">💰 Budget</div>
+                        <div style="font-size: 1.2rem; font-weight: 700; color: var(--primary-color);">${formData.budget}</div>
+                    </div>
+                </div>
+            </div>
+    `;
+
+    // 1. Weather Forecast Section
+    if (plan.weather && plan.weather.length > 0) {
+        html += `
+            <div class="plan-section" style="margin-bottom: 3rem;">
+                <h2 class="section-title" style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+                    <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #FFD89B 0%, #19547B 100%); display: flex; align-items: center; justify-content: center;">
+                        <span style="font-size: 1.5rem;">☀️</span>
+                    </div>
+                    Weather Forecast
+                </h2>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1.25rem;">
+        `;
+        plan.weather.forEach((day, idx) => {
+            const icon = getWeatherIcon(day.condition);
+            html += `
+                <div class="modern-card" style="padding: 1.5rem; text-align: center; background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);">
+                    <div style="font-size: 3rem; margin-bottom: 0.75rem; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));">${icon}</div>
+                    <div style="font-weight: 700; color: #2d3748; margin-bottom: 0.5rem; font-size: 0.95rem;">${formatDate(day.date)}</div>
+                    <div style="color: #4a5568; font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem;">${day.temperature || 'N/A'}</div>
+                    <div style="color: #718096; font-size: 0.85rem; line-height: 1.4;">${day.description || day.condition}</div>
+                </div>
+            `;
+        });
+        html += `</div></div>`;
+    }
+
+    // 2. Tourist Attractions Section
+    if (plan.touristAttractions && plan.touristAttractions.length > 0) {
+        html += `
+            <div class="plan-section" style="margin-bottom: 3rem;">
+                <h2 class="section-title" style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+                    <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); display: flex; align-items: center; justify-content: center;">
+                        <span style="font-size: 1.5rem;">📍</span>
+                    </div>
+                    Tourist Attractions
+                </h2>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+        `;
+        plan.touristAttractions.forEach(attraction => {
+            html += `
+                <div class="modern-card">
+                    <div style="position: relative; height: 220px; overflow: hidden;">
+                        <img src="assets/attraction.jpg" alt="${attraction.name}" 
+                             onerror="this.src='https://via.placeholder.com/400x220?text='+encodeURIComponent('${attraction.name}')" 
+                             style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease;">
+                        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%);"></div>
+                    </div>
+                    <div style="padding: 1.5rem;">
+                        <h3 style="color: #2d3748; margin: 0 0 0.75rem 0; font-size: 1.25rem; font-weight: 700; line-height: 1.3;">${attraction.name}</h3>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; color: #718096; font-size: 0.9rem;">
+                            <span>📍</span>
+                            <span>${attraction.location || 'N/A'}</span>
+                        </div>
+                        <p style="color: #4a5568; font-size: 0.95rem; line-height: 1.7; margin: 0;">${attraction.description || ''}</p>
+                    </div>
+                </div>
+            `;
+        });
+        html += `</div></div>`;
+    }
+
+    // 3. Popular Restaurants Section
+    if (plan.restaurants && plan.restaurants.length > 0) {
+        html += `
+            <div class="plan-section" style="margin-bottom: 3rem;">
+                <h2 class="section-title" style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+                    <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%); display: flex; align-items: center; justify-content: center;">
+                        <span style="font-size: 1.5rem;">🍽️</span>
+                    </div>
+                    Popular Restaurants
+                </h2>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+        `;
+        plan.restaurants.forEach(restaurant => {
+            const stars = getStarRating(restaurant.rating);
+            html += `
+                <div class="modern-card" style="padding: 1.75rem;">
+                    <h3 style="color: #2d3748; margin: 0 0 0.5rem 0; font-size: 1.2rem; font-weight: 700;">${restaurant.name}</h3>
+                    <div style="display: inline-block; padding: 0.25rem 0.75rem; background: #f0f4f8; border-radius: 20px; color: #4a5568; font-size: 0.85rem; margin-bottom: 1rem;">
+                        ${restaurant.cuisine || 'Various'}
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%); border-radius: 12px; margin-bottom: 1rem;">
+                        <div style="color: #ffa500; font-size: 1.1rem; font-weight: 600;">${stars}</div>
+                        <div style="color: var(--primary-color); font-weight: 700; font-size: 1rem;">${restaurant.priceRange || 'N/A'}</div>
+                    </div>
+                    <p style="color: #4a5568; font-size: 0.9rem; line-height: 1.7; margin: 0;">${restaurant.description || ''}</p>
+                </div>
+            `;
+        });
+        html += `</div></div>`;
+    }
+
+    // 4. Packing Essentials Section
+    if (plan.packingEssentials && plan.packingEssentials.length > 0) {
+        html += `
+            <div class="plan-section" style="margin-bottom: 3rem;">
+                <h2 class="section-title" style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+                    <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); display: flex; align-items: center; justify-content: center;">
+                        <span style="font-size: 1.5rem;">🎒</span>
+                    </div>
+                    Packing Essentials
+                </h2>
+                <div class="modern-card" style="padding: 2rem; background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 0.75rem;">
+        `;
+        plan.packingEssentials.forEach(item => {
+            html += `
+                <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1rem; background: white; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                    <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--primary-color); flex-shrink: 0;"></div>
+                    <span style="color: #4a5568; font-size: 0.95rem;">${item}</span>
+                </div>
+            `;
+        });
+        html += `</div></div></div>`;
+    }
+
+    // 5. Accommodations Section
+    if (plan.accommodations && plan.accommodations.length > 0) {
+        html += `
+            <div class="plan-section" style="margin-bottom: 3rem;">
+                <h2 class="section-title" style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+                    <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%); display: flex; align-items: center; justify-content: center;">
+                        <span style="font-size: 1.5rem;">🏨</span>
+                    </div>
+                    Accommodations
+                </h2>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1.5rem;">
+        `;
+        plan.accommodations.forEach(accommodation => {
+            const stars = getStarRating(accommodation.rating);
+            html += `
+                <div class="modern-card" style="padding: 1.75rem;">
+                    <h3 style="color: #2d3748; margin: 0 0 0.5rem 0; font-size: 1.2rem; font-weight: 700;">${accommodation.name}</h3>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; color: #718096; font-size: 0.9rem;">
+                        <span>📍</span>
+                        <span>${accommodation.location || 'N/A'}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%); border-radius: 12px; margin-bottom: 1.25rem;">
+                        <div style="color: #ffa500; font-size: 1.1rem; font-weight: 600;">${stars}</div>
+                        <div style="color: var(--primary-color); font-weight: 700; font-size: 1.1rem;">${accommodation.price || 'N/A'}</div>
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <div style="font-weight: 600; color: #4a5568; font-size: 0.9rem; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Main Facilities</div>
+                        <div style="display: flex; flex-wrap: gap: 0.5rem;">
+            `;
+            (accommodation.facilities || []).slice(0, 3).forEach(facility => {
+                html += `
+                    <span style="padding: 0.5rem 1rem; background: var(--primary-color); color: white; border-radius: 20px; font-size: 0.85rem; font-weight: 500;">
+                        ${facility}
+                    </span>
+                `;
+            });
+            html += `
+                        </div>
+                    </div>
+                    <p style="color: #4a5568; font-size: 0.9rem; line-height: 1.7; margin: 0;">${accommodation.description || ''}</p>
+                </div>
+            `;
+        });
+        html += `</div></div>`;
+    }
+
+    // 6. Local Transportation Section
+    if (plan.localTransportation && plan.localTransportation.options && plan.localTransportation.options.length > 0) {
+        html += `
+            <div class="plan-section" style="margin-bottom: 3rem;">
+                <h2 class="section-title" style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+                    <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center;">
+                        <span style="font-size: 1.5rem;">🚗</span>
+                    </div>
+                    Local Transportation
+                </h2>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem;">
+        `;
+        plan.localTransportation.options.forEach(option => {
+            html += `
+                <div class="modern-card" style="padding: 1.5rem;">
+                    <h3 style="color: #2d3748; margin: 0 0 0.75rem 0; font-size: 1.1rem; font-weight: 700;">${option.type}</h3>
+                    <div style="padding: 0.75rem 1rem; background: linear-gradient(135deg, var(--primary-color) 0%, #2d8659 100%); color: white; border-radius: 10px; font-weight: 700; font-size: 1rem; margin-bottom: 1rem; text-align: center;">
+                        ${option.cost || 'N/A'}
+                    </div>
+                    <p style="color: #4a5568; font-size: 0.9rem; line-height: 1.7; margin: 0;">${option.description || ''}</p>
+                </div>
+            `;
+        });
+        html += `</div></div>`;
+    }
+
+    // 7. Local Events Section
+    if (plan.localEvents && plan.localEvents.length > 0) {
+        html += `
+            <div class="plan-section" style="margin-bottom: 3rem;">
+                <h2 class="section-title" style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+                    <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%); display: flex; align-items: center; justify-content: center;">
+                        <span style="font-size: 1.5rem;">🎉</span>
+                    </div>
+                    Local Events
+                </h2>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem;">
+        `;
+        plan.localEvents.forEach(event => {
+            html += `
+                <div class="modern-card" style="padding: 1.75rem;">
+                    <h3 style="color: #2d3748; margin: 0 0 0.75rem 0; font-size: 1.1rem; font-weight: 700;">${event.name}</h3>
+                    ${event.date ? `
+                        <div style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: #f0f4f8; border-radius: 20px; margin-bottom: 1rem;">
+                            <span>📅</span>
+                            <span style="color: #4a5568; font-size: 0.9rem; font-weight: 500;">${event.date}</span>
+                        </div>
+                    ` : ''}
+                    <p style="color: #4a5568; font-size: 0.9rem; line-height: 1.7; margin: 0;">${event.description || ''}</p>
+                </div>
+            `;
+        });
+        html += `</div></div>`;
+    }
+
+    // 8. Trip Cost Section
+    if (plan.tripCost) {
+        html += `
+            <div class="plan-section" style="margin-bottom: 3rem;">
+                <h2 class="section-title" style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+                    <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%); display: flex; align-items: center; justify-content: center;">
+                        <span style="font-size: 1.5rem;">💰</span>
+                    </div>
+                    Trip Cost Breakdown
+                </h2>
+                <div class="modern-card" style="padding: 2rem; background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);">
+                    <div style="display: grid; gap: 1rem; margin-bottom: 1.5rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                            <span style="color: #4a5568; font-weight: 500;">Accommodation</span>
+                            <strong style="color: #2d3748; font-size: 1.1rem;">${plan.tripCost.accommodation || 'N/A'}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                            <span style="color: #4a5568; font-weight: 500;">Food</span>
+                            <strong style="color: #2d3748; font-size: 1.1rem;">${plan.tripCost.food || 'N/A'}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                            <span style="color: #4a5568; font-weight: 500;">Transportation</span>
+                            <strong style="color: #2d3748; font-size: 1.1rem;">${plan.tripCost.transportation || 'N/A'}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                            <span style="color: #4a5568; font-weight: 500;">Attractions</span>
+                            <strong style="color: #2d3748; font-size: 1.1rem;">${plan.tripCost.attractions || 'N/A'}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                            <span style="color: #4a5568; font-weight: 500;">Miscellaneous</span>
+                            <strong style="color: #2d3748; font-size: 1.1rem;">${plan.tripCost.miscellaneous || 'N/A'}</strong>
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 2rem; background: linear-gradient(135deg, var(--primary-color) 0%, #2d8659 100%); color: white; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,103,52,0.3);">
+                        <span style="font-size: 1.3rem; font-weight: 700;">Total Cost</span>
+                        <span style="font-size: 1.5rem; font-weight: 800;">${plan.tripCost.total || 'N/A'}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // 9. Safety Tips Section
+    if (plan.safetyTips && plan.safetyTips.length > 0) {
+        html += `
+            <div class="plan-section" style="margin-bottom: 3rem;">
+                <h2 class="section-title" style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+                    <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%); display: flex; align-items: center; justify-content: center;">
+                        <span style="font-size: 1.5rem;">🛡️</span>
+                    </div>
+                    Safety Tips
+                </h2>
+                <div class="modern-card" style="padding: 2rem; background: linear-gradient(135deg, #fff8e1 0%, #ffffff 100%); border-left: 5px solid #ffc107;">
+                    <div style="display: grid; gap: 1rem;">
+        `;
+        plan.safetyTips.forEach(tip => {
+            html += `
+                <div style="display: flex; align-items: start; gap: 1rem; padding: 1rem 1.25rem; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                    <div style="width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 0.25rem;">
+                        <span style="color: white; font-size: 0.75rem; font-weight: 700;">✓</span>
+                    </div>
+                    <p style="color: #4a5568; font-size: 0.95rem; line-height: 1.7; margin: 0; flex: 1;">${tip}</p>
+                </div>
+            `;
+        });
+        html += `</div></div></div>`;
+    }
+
+    html += `
+            <div style="text-align: center; margin-top: 3rem;">
+                <button class="btn btn-primary" onclick="savePlan()" style="padding: 1rem 3rem; font-size: 1.1rem; font-weight: 700; border-radius: 50px; box-shadow: 0 8px 24px rgba(0,103,52,0.3); transition: all 0.3s ease;">
+                    Save Plan
+                </button>
+            </div>
+        </div>
+    `;
+
+    return html;
+}
+
+// Helper functions
+export function getWeatherIcon(condition) {
+    const icons = {
+        'sunny': '☀️',
+        'cloudy': '☁️',
+        'rainy': '🌧️',
+        'partly-cloudy': '⛅',
+        'clear': '☀️',
+        'overcast': '☁️',
+        'rain': '🌧️',
+        'snow': '❄️',
+        'windy': '💨'
+    };
+    return icons[condition?.toLowerCase()] || '🌤️';
+}
+
+export function getStarRating(rating) {
+    if (!rating) return 'N/A';
+    const num = parseFloat(rating);
+    if (isNaN(num)) return rating;
+    const fullStars = Math.floor(num);
+    const hasHalf = num % 1 >= 0.5;
+    let stars = '⭐'.repeat(fullStars);
+    if (hasHalf) stars += '½';
+    return stars + ` (${num.toFixed(1)})`;
+}
+
+export function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    } catch {
+        return dateString;
+    }
+}
+
+// Fallback format plan function for text responses
 function formatPlan(planText) {
     if (!planText) return '<p>No plan content available.</p>';
     
     let formatted = '';
-    let inList = false;
-    let listItems = [];
-    
-    // Split by lines and process
     const lines = planText.split('\n');
     
-    for (let i = 0; i < lines.length; i++) {
-        let line = lines[i].trim();
+    for (let line of lines) {
+        line = line.trim();
+        if (!line) continue;
         
-        // Skip empty lines but close lists
-        if (!line) {
-            if (inList && listItems.length > 0) {
-                formatted += `<ul class="plan-list">${listItems.join('')}</ul>`;
-                listItems = [];
-                inList = false;
-            }
-            continue;
-        }
-        
-        // Main headers (# Title)
-        if (line.match(/^#\s+(.+)$/) && !line.startsWith('##')) {
-            if (inList) {
-                formatted += `<ul class="plan-list">${listItems.join('')}</ul>`;
-                listItems = [];
-                inList = false;
-            }
+        if (line.match(/^#\s+(.+)$/)) {
             const title = line.replace(/^#+\s+/, '');
             formatted += `<h2 class="plan-title">${title}</h2>`;
-        }
-        // Sub headers (## Subtitle)
-        else if (line.match(/^##\s+(.+)$/) && !line.startsWith('###')) {
-            if (inList) {
-                formatted += `<ul class="plan-list">${listItems.join('')}</ul>`;
-                listItems = [];
-                inList = false;
-            }
+        } else if (line.match(/^##\s+(.+)$/)) {
             const title = line.replace(/^##+\s+/, '');
             formatted += `<h3 class="plan-subtitle">${title}</h3>`;
-        }
-        // Small headers (### Day 1, etc.)
-        else if (line.match(/^###\s+(.+)$/)) {
-            if (inList) {
-                formatted += `<ul class="plan-list">${listItems.join('')}</ul>`;
-                listItems = [];
-                inList = false;
-            }
-            const title = line.replace(/^###+\s+/, '');
-            formatted += `<h4 class="plan-day-title">${title}</h4>`;
-        }
-        // Bullet points (- item or • item or * item)
-        else if (line.match(/^[-•*]\s+(.+)$/)) {
-            inList = true;
+        } else if (line.match(/^[-•*]\s+(.+)$/)) {
             const content = line.replace(/^[-•*]\s+/, '');
-            const processedContent = processInlineFormatting(content);
-            listItems.push(`<li class="plan-list-item">${processedContent}</li>`);
+            formatted += `<li class="plan-list-item">${content}</li>`;
+        } else {
+            formatted += `<p class="plan-paragraph">${line}</p>`;
         }
-        // Numbered lists (1. item or 1) item)
-        else if (line.match(/^\d+[\.)]\s+(.+)$/)) {
-            inList = true;
-            const content = line.replace(/^\d+[\.)]\s+/, '');
-            const processedContent = processInlineFormatting(content);
-            listItems.push(`<li class="plan-list-item numbered">${processedContent}</li>`);
-        }
-        // Regular paragraphs
-        else {
-            if (inList && listItems.length > 0) {
-                formatted += `<ul class="plan-list">${listItems.join('')}</ul>`;
-                listItems = [];
-                inList = false;
-            }
-            
-            // Check if it's a special line (like "Day 1:", "Cost:", etc.)
-            if (line.match(/^(Day\s*\d+|Cost|Budget|Accommodation|Activities?|Tips?|Notes?|Duration|Includes?|Highlights?):/i)) {
-                formatted += `<p class="plan-highlight">${processInlineFormatting(line)}</p>`;
-            } else {
-                formatted += `<p class="plan-paragraph">${processInlineFormatting(line)}</p>`;
-            }
-        }
-    }
-    
-    // Close any remaining list
-    if (inList && listItems.length > 0) {
-        formatted += `<ul class="plan-list">${listItems.join('')}</ul>`;
     }
     
     return formatted || '<p>Plan content is being processed...</p>';
-}
-
-// Helper function to process inline formatting (bold, italic, etc.)
-function processInlineFormatting(text) {
-    if (!text) return '';
-    
-    // Bold text (**text** or __text__)
-    text = text.replace(/\*\*(.*?)\*\*/g, '<strong class="plan-bold">$1</strong>');
-    text = text.replace(/__(.*?)__/g, '<strong class="plan-bold">$1</strong>');
-    
-    // Italic text (*text* or _text_)
-    text = text.replace(/\*(.*?)\*/g, '<em class="plan-italic">$1</em>');
-    text = text.replace(/_(.*?)_/g, '<em class="plan-italic">$1</em>');
-    
-    // Links [text](url)
-    text = text.replace(/\[([^\]]+)\]\(([^\)]+)\)/g, '<a href="$2" target="_blank" class="plan-link">$1</a>');
-    
-    // Time patterns (e.g., "9:00 AM", "10:30 PM")
-    text = text.replace(/(\d{1,2}:\d{2}\s*(AM|PM|am|pm))/g, '<span class="plan-time">$1</span>');
-    
-    // Money/Price patterns (PKR, $, Rs)
-    text = text.replace(/(PKR\s*\d+|Rs\.?\s*\d+|\$\s*\d+|\d+\s*(PKR|rupees?))/gi, '<span class="plan-price">$1</span>');
-    
-    return text;
 }
 
 // Save plan function
@@ -238,20 +685,37 @@ window.savePlan = async function() {
     }
     
     try {
-        const planContainer = document.querySelector('.plan-container');
-        const planText = planContainer.querySelector('.plan-content').textContent || planContainer.querySelector('.plan-content').innerText;
+        // Get the current plan data from the global variable
+        if (!window.currentPlanData) {
+            alert('No plan data available to save. Please generate a plan first.');
+            return;
+        }
+        
+        // Get form data with null checks
+        const destinationEl = document.getElementById('destination');
+        const startDateEl = document.getElementById('startDate');
+        const endDateEl = document.getElementById('endDate');
+        const numberOfPeopleEl = document.getElementById('numberOfPeople');
+        const budgetEl = document.getElementById('budget');
+        const accommodationTypeEl = document.getElementById('accommodationType');
+        const specialRequirementsEl = document.getElementById('specialRequirements');
+        
+        if (!destinationEl || !startDateEl || !endDateEl) {
+            alert('Error: Form elements not found. Please try again.');
+            return;
+        }
         
         const savedPlanData = {
             userId: user.uid,
-            destination: document.getElementById('destination').value,
-            startDate: document.getElementById('startDate').value,
-            endDate: document.getElementById('endDate').value,
-            numberOfPeople: document.getElementById('numberOfPeople').value,
-            budget: document.getElementById('budget').value,
-            accommodationType: document.getElementById('accommodationType').value,
+            destination: destinationEl.value,
+            startDate: startDateEl.value,
+            endDate: endDateEl.value,
+            numberOfPeople: numberOfPeopleEl ? numberOfPeopleEl.value : '1',
+            budget: budgetEl ? budgetEl.value : 'Not specified',
+            accommodationType: accommodationTypeEl ? accommodationTypeEl.value : 'Not specified',
             preferences: Array.from(document.querySelectorAll('input[name="preferences"]:checked')).map(cb => cb.value),
-            specialRequirements: document.getElementById('specialRequirements').value || 'None',
-            plan: planText,
+            specialRequirements: specialRequirementsEl ? (specialRequirementsEl.value || 'None') : 'None',
+            planData: window.currentPlanData, // Save structured JSON data
             savedAt: serverTimestamp()
         };
         
@@ -259,7 +723,6 @@ window.savePlan = async function() {
         
         alert('Trip plan saved successfully! You can view it in your profile.');
     } catch (error) {
-        console.error('Error saving plan:', error);
         alert('Failed to save plan: ' + error.message);
     }
 };
@@ -268,7 +731,6 @@ window.savePlan = async function() {
 onAuthStateChanged(auth, (user) => {
     if (user) {
         const profileLink = document.getElementById('profile-link');
-        profileLink.textContent = 'Profile';
+        if (profileLink) profileLink.textContent = 'Profile';
     }
 });
-

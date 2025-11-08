@@ -12,12 +12,18 @@
             <a href="index.html" class="logo" aria-label="AI Trip Planner">
                 <img src="assets/inLogo.png" alt="AI Trip Planner Logo" class="logo-img">
             </a>
+<button class="mobile-menu-toggle" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
             <ul class="nav-links center">
                 <li><a class="nav-link" href="index.html">Home</a></li>
                 <li><a class="nav-link" href="explore.html">Explore</a></li>
-                <li><a class="nav-link" href="plan-trip.html">Plan Trip</a></li>
+                <li><a class="nav-link" href="plan-trip.html">AI Plan Trip</a></li>
                 <li><a class="nav-link" href="image-predict.html">Image Predict</a></li>
                 <li><a class="nav-link" href="profile.html">Profile</a></li>
+                
             </ul>
             <a id="auth-btn" class="btn small btn-secondary auth-cta">Login</a>
         </nav>
@@ -117,12 +123,14 @@
                         Generate Plan
                     </button>
                 </form>
-            </div>
+                    </div>
 
-            <div id="plan-result" class="hidden">
-                <!-- Generated plan will be displayed here -->
+                    <div id="plan-result" class="hidden" style="margin-top: 2rem;">
+                        <!-- Generated plan will be displayed here -->
+                    </div>
+                </div>
             </div>
-        </section>
+        </div>
     </div>
 
     <script type="module" src="js/navbar.js"></script>
