@@ -106,19 +106,19 @@ async function loadDestinations() {
             });
         });
         
-        // Group trips by city
-        const tripsByCity = {};
-        allTrips.forEach(trip => {
-            const city = String(trip.location || 'Other').trim();
-            if (!tripsByCity[city]) {
-                tripsByCity[city] = [];
+        // Group agencies by their location
+        const agenciesByCity = {};
+        allAgencies.forEach(agency => {
+            const city = String(agency.location || 'Other').trim();
+            if (!agenciesByCity[city]) {
+                agenciesByCity[city] = [];
             }
-            tripsByCity[city].push(trip);
+            agenciesByCity[city].push(agency);
         });
         
-        // Build list of cities
-        const cityEntries = Object.entries(tripsByCity)
-            .map(([city, trips]) => ({ city, count: trips.length }))
+        // Build list of cities with agency count
+        const cityEntries = Object.entries(agenciesByCity)
+            .map(([city, agencies]) => ({ city, count: agencies.length }))
             .sort((a, b) => b.count - a.count);
 
         if (cityEntries.length === 0) {
@@ -152,6 +152,9 @@ function renderCities(cityEntries) {
     document.getElementById('breadcrumb-city').style.display = 'none';
     document.getElementById('breadcrumb-sep2').style.display = 'none';
     document.getElementById('breadcrumb-agency').style.display = 'none';
+    
+    // Hide agency info
+    showAgencyInfo(null);
     
     // Show cities, hide agencies
     document.getElementById('cities-container').style.display = 'grid';
@@ -195,16 +198,17 @@ function showAgenciesForCity(city) {
     document.getElementById('breadcrumb-sep2').style.display = 'none';
     document.getElementById('breadcrumb-agency').style.display = 'none';
     
-    // Get agencies that have trips in this city
-    const cityTrips = allTrips.filter(t => String(t.location || '').trim() === city);
-    const agencyIds = [...new Set(cityTrips.map(t => t.agencyId).filter(Boolean))];
-    const cityAgencies = allAgencies.filter(a => agencyIds.includes(a.id));
+    // Get agencies in this city (by agency location)
+    const cityAgencies = allAgencies.filter(a => String(a.location || '').trim() === city);
     
     // Count trips per agency
     const agenciesWithCount = cityAgencies.map(agency => {
-        const count = cityTrips.filter(t => t.agencyId === agency.id).length;
+        const count = allTrips.filter(t => t.agencyId === agency.id).length;
         return { ...agency, tripCount: count };
     }).sort((a, b) => b.tripCount - a.tripCount);
+    
+    // Hide agency info when showing agencies list
+    showAgencyInfo(null);
     
     // Hide cities, show agencies
     document.getElementById('cities-container').style.display = 'none';
@@ -220,7 +224,11 @@ function showAgenciesForCity(city) {
     agenciesContainer.innerHTML = agenciesWithCount.map(agency => `
         <div class="city-card" data-agency-id="${agency.id}">
             <div class="city-name">${agency.name || 'Agency'}</div>
-            <div class="city-meta">${agency.tripCount} trip(s)</div>
+            ${agency.description ? `<div class="city-meta" style="font-size: 0.85rem; margin: 0.5rem 0; color: var(--text-light);">${agency.description.substring(0, 100)}${agency.description.length > 100 ? '...' : ''}</div>` : ''}
+            <div class="city-meta" style="display: flex; justify-content: space-between; align-items: center;">
+                <span>${agency.tripCount} trip(s)</span>
+                ${agency.rating ? `<span style="color: #FFA500;">★ ${Number(agency.rating).toFixed(1)}</span>` : ''}
+            </div>
         </div>
     `).join('');
     
@@ -250,13 +258,16 @@ function showTripsForAgency(city, agency) {
     document.getElementById('breadcrumb-agency').style.display = 'inline';
     document.getElementById('breadcrumb-agency').textContent = agency.name || 'Agency';
     
-    // Filter trips
-    const trips = allTrips.filter(t => 
-        String(t.location || '').trim() === city && t.agencyId === agency.id
-    );
+    // Filter trips for this agency
+    const trips = allTrips.filter(t => t.agencyId === agency.id);
     
     // Update content
-    document.getElementById('content-title').textContent = `${agency.name || 'Agency'} - ${city} Trips`;
+    document.getElementById('content-title').textContent = `${agency.name || 'Agency'} Trips`;
+    
+    // Show agency info
+    showAgencyInfo(agency);
+    
+    // Render trips
     renderTrips(trips);
 }
 
@@ -268,6 +279,7 @@ function renderTrips(trips) {
         container.innerHTML = '<p style="color: var(--text-light); text-align: center; padding: 2rem;">No trips available.</p>';
         return;
     }
+    
     
     // Sort trips
     const today = new Date();
@@ -290,11 +302,14 @@ function renderTrips(trips) {
         const d = trip._parsedDate;
         const dateDisplay = d ? d.toLocaleDateString() : 'N/A';
         const priceStr = `PKR ${Number(trip.pricePerSeat || 0).toLocaleString()} / seat`;
+        const agency = trip.agency || selectedAgency;
         return `
             <div class="card">
                 ${trip.imageUrl ? `<img src="${trip.imageUrl}" alt="${trip.description || 'Trip'}" class="card-image">` : ''}
                 <div class="card-content">
                     <h4 class="card-title">${trip.description || 'Trip'}</h4>
+                    ${agency ? `<div style="margin-bottom: 0.5rem;"><span style="color: var(--text-light); font-size: 0.9rem;">by</span> <a href="#" onclick="window.showAgencyDetailsInExplore('${agency.id}'); return false;" style="color: var(--primary-color); text-decoration: none; font-weight: 600;">${agency.name || 'Agency'}</a></div>` : ''}
+                    <div class="card-text"><strong>Location:</strong> ${trip.location || 'N/A'}</div>
                     <div class="card-text"><strong>Departure:</strong> ${trip.departure || 'N/A'}</div>
                     <div class="card-meta">
                         <span><strong>Seats:</strong> ${availableSeats}/${trip.totalSeats || 0}</span>
@@ -408,6 +423,137 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
+// Show agency info in dedicated section
+function showAgencyInfo(agency) {
+    const agencyInfoSection = document.getElementById('agency-info-section');
+    
+    if (!agency) {
+        agencyInfoSection.style.display = 'none';
+        agencyInfoSection.innerHTML = '';
+        return;
+    }
+    
+    agencyInfoSection.style.display = 'block';
+    agencyInfoSection.innerHTML = `
+        <div style="text-align: center; padding: 1rem 0 1.25rem; border-bottom: 1px solid #e9ecef;">
+            <h2 style="margin: 0 0 0.5rem 0; color: var(--text-dark); font-size: 1.75rem; font-weight: 700;">${agency.name || 'Agency'}</h2>
+            
+            <div style="display: flex; align-items: center; justify-content: center; gap: 1.25rem; margin-bottom: 0.75rem; flex-wrap: wrap;">
+                ${agency.rating ? `
+                    <div style="display: flex; align-items: center; gap: 0.35rem; color: #FFA500; font-size: 1rem; font-weight: 600;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                        </svg>
+                        <span>${Number(agency.rating).toFixed(1)}</span>
+                    </div>
+                ` : ''}
+                ${agency.location ? `
+                    <div style="display: flex; align-items: center; gap: 0.35rem; color: var(--text-light); font-size: 0.95rem;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                            <circle cx="12" cy="10" r="3"></circle>
+                        </svg>
+                        <span>${agency.location}</span>
+                    </div>
+                ` : ''}
+            </div>
+            
+            ${agency.description ? `<p style="color: var(--text-light); line-height: 1.6; margin: 0.5rem auto 0.75rem; max-width: 650px; font-size: 0.95rem;">${agency.description}</p>` : ''}
+            
+            <div style="display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap; margin-top: 0.75rem;">
+                ${agency.phone ? `
+                    <a href="tel:${agency.phone}" style="display: flex; align-items: center; gap: 0.4rem; color: var(--primary-color); text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                        </svg>
+                        <span>${agency.phone}</span>
+                    </a>
+                ` : ''}
+                ${agency.email ? `
+                    <a href="mailto:${agency.email}" style="display: flex; align-items: center; gap: 0.4rem; color: var(--primary-color); text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                            <polyline points="22,6 12,13 2,6"></polyline>
+                        </svg>
+                        <span>${agency.email}</span>
+                    </a>
+                ` : ''}
+            </div>
+        </div>
+    `;
+}
+
+// Show agency details in explore page
+window.showAgencyDetailsInExplore = async function(agencyId) {
+    try {
+        const agency = allAgencies.find(a => a.id === agencyId);
+        
+        if (!agency) {
+            alert('Agency not found');
+            return;
+        }
+        
+        // Create modal HTML
+        const modalHTML = `
+            <div id="agency-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000;" onclick="if(event.target.id==='agency-modal') this.remove();">
+                <div style="background: white; padding: 2rem; border-radius: 8px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;" onclick="event.stopPropagation();">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h2 style="margin: 0; color: var(--text-dark);">${agency.name || 'Agency'}</h2>
+                        <button onclick="document.getElementById('agency-modal').remove()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-light);">&times;</button>
+                    </div>
+                    ${agency.rating ? `<div style="color: #FFA500; margin-bottom: 1rem; font-size: 1.2rem;">★ ${Number(agency.rating).toFixed(1)} Rating</div>` : ''}
+                    ${agency.description ? `<div style="margin-bottom: 1rem; color: var(--text-light); line-height: 1.6;">${agency.description}</div>` : ''}
+                    <div style="margin-top: 1.5rem;">
+                        <strong style="color: var(--text-dark);">Contact Information:</strong>
+                        ${agency.phone ? `<div style="margin-top: 0.5rem; color: var(--text-light);">📞 ${agency.phone}</div>` : ''}
+                        ${agency.email ? `<div style="margin-top: 0.5rem; color: var(--text-light);">📧 ${agency.email}</div>` : ''}
+                        ${agency.location ? `<div style="margin-top: 0.5rem; color: var(--text-light);">📍 ${agency.location}</div>` : ''}
+                    </div>
+                    <div style="margin-top: 1.5rem; text-align: center;">
+                        <button onclick="document.getElementById('agency-modal').remove()" class="btn btn-primary">Close</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remove existing modal if any
+        const existingModal = document.getElementById('agency-modal');
+        if (existingModal) existingModal.remove();
+        
+        // Add modal to body
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+    } catch (error) {
+        console.error('Error loading agency details:', error);
+        alert('Failed to load agency details');
+    }
+};
+
+// Handle URL parameters for direct navigation
+function handleURLParameters() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const city = urlParams.get('city');
+    const agencyId = urlParams.get('agency');
+    
+    if (city && agencyId) {
+        // Wait for data to load then navigate
+        setTimeout(() => {
+            const agency = allAgencies.find(a => a.id === agencyId);
+            if (agency) {
+                showTripsForAgency(city, agency);
+            } else {
+                showAgenciesForCity(city);
+            }
+        }, 500);
+    } else if (city) {
+        setTimeout(() => {
+            showAgenciesForCity(city);
+        }, 500);
+    }
+}
+
 // Initialize page
-loadDestinations();
+loadDestinations().then(() => {
+    handleURLParameters();
+});
 

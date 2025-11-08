@@ -43,6 +43,14 @@ async function loadFeaturedTrips() {
         // Don't use orderBy on date string - just get all and sort in memory
         const querySnapshot = await getDocs(tripsRef);
         
+        // Get all agencies
+        const agenciesRef = collection(db, 'agencies');
+        const agenciesSnapshot = await getDocs(agenciesRef);
+        const agenciesMap = {};
+        agenciesSnapshot.forEach(doc => {
+            agenciesMap[doc.id] = { id: doc.id, ...doc.data() };
+        });
+        
         if (querySnapshot.empty) {
             tripsContainer.innerHTML = '<p style="text-align: center; grid-column: 1/-1; padding: 2rem;">No trips available yet. Check back soon!</p>';
             return;
@@ -190,6 +198,7 @@ async function loadFeaturedTrips() {
         
         tripsContainer.innerHTML = selectedDocs.map(doc => {
             const trip = doc.data();
+            const agency = agenciesMap[trip.agencyId];
             const availableSeats = Math.max(0, (trip.totalSeats || 0) - (trip.bookedSeats || 0));
             const dateObj = getTripDate(trip);
             const dateDisplay = dateObj ? dateObj.toLocaleDateString() : 'N/A';
@@ -206,6 +215,7 @@ async function loadFeaturedTrips() {
                             <h3 class="card-title" style="margin:0;">${titleLocation}</h3>
                             <div class="card-price" style="white-space:nowrap;">${priceStr.replace(' / seat','')} <span style="color:#6c757d; font-weight:500;">/ seat</span></div>
                         </div>
+                        ${agency ? `<div style="margin-top: 0.5rem;"><span style="color: var(--text-light); font-size: 0.9rem;">by</span> <a href="explore.html?city=${encodeURIComponent(titleLocation)}&agency=${agency.id}" style="color: var(--primary-color); text-decoration: none; font-weight: 600;">${agency.name || 'Agency'}</a></div>` : ''}
                         ${subtitle ? `<div class="card-text" style="margin-top:.35rem;">${subtitle}</div>` : ''}
                         <div class="card-meta" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:.5rem; margin-top:.5rem;">
                             <div><strong>Departure:</strong> ${departure}</div>

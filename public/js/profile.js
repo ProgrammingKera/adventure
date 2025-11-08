@@ -38,24 +38,35 @@ if (profileUploadBtn) {
             const urlInput = document.getElementById('profile-image-url');
             
             try {
-                statusDiv.textContent = 'Processing...';
+                statusDiv.textContent = 'Uploading...';
                 statusDiv.style.color = 'var(--primary-color)';
                 profileUploadBtn.disabled = true;
                 
-                // Convert to base64 for mobile compatibility
-                const reader = new FileReader();
-                reader.onload = async (event) => {
-                    const base64String = event.target.result;
-                    urlInput.value = base64String;
-                    
-                    statusDiv.textContent = '✓ Image ready!';
-                    statusDiv.style.color = 'green';
-                    
-                    setTimeout(() => {
-                        statusDiv.textContent = '';
-                    }, 3000);
-                };
-                reader.readAsDataURL(file);
+                // Upload to Cloudinary (same as mobile)
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('upload_preset', 'jtgeeyis');
+                
+                const response = await fetch('https://api.cloudinary.com/v1_1/dow1tbstn/image/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) throw new Error('Upload failed');
+                
+                const data = await response.json();
+                urlInput.value = data.secure_url;
+                
+                statusDiv.textContent = '✓ Image uploaded successfully!';
+                statusDiv.style.color = 'green';
+                
+                setTimeout(() => {
+                    statusDiv.textContent = '';
+                }, 3000);
+            } catch (error) {
+                console.error('Upload error:', error);
+                statusDiv.textContent = '✗ Upload failed. Please try again.';
+                statusDiv.style.color = 'red';
             } finally {
                 profileUploadBtn.disabled = false;
             }
