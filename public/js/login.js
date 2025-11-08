@@ -8,6 +8,28 @@ onAuthStateChanged(auth, async (user) => {
 	}
 });
 
+// Password toggle functionality
+const togglePasswordBtn = document.getElementById('toggle-login-password');
+const passwordInput = document.getElementById('login-password');
+const eyeIcon = document.getElementById('eye-icon');
+const eyeOffIcon = document.getElementById('eye-off-icon');
+
+if (togglePasswordBtn && passwordInput && eyeIcon && eyeOffIcon) {
+    togglePasswordBtn.addEventListener('click', () => {
+        const type = passwordInput.type === 'password' ? 'text' : 'password';
+        passwordInput.type = type;
+        
+        // Toggle icons
+        if (type === 'password') {
+            eyeIcon.style.display = 'block';
+            eyeOffIcon.style.display = 'none';
+        } else {
+            eyeIcon.style.display = 'none';
+            eyeOffIcon.style.display = 'block';
+        }
+    });
+}
+
 document.getElementById('login-form-element').addEventListener('submit', async (e) => {
     e.preventDefault();
     const errorDiv = document.getElementById('login-error');

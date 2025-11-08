@@ -21,6 +21,50 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
+// Password toggle functionality for signup password
+const toggleSignupPassword = document.getElementById('toggle-signup-password');
+const signupPasswordInput = document.getElementById('signup-password');
+const eyeIconSignup = document.querySelector('.eye-icon-signup');
+const eyeOffIconSignup = document.querySelector('.eye-off-icon-signup');
+
+if (toggleSignupPassword && signupPasswordInput && eyeIconSignup && eyeOffIconSignup) {
+    toggleSignupPassword.addEventListener('click', () => {
+        const type = signupPasswordInput.type === 'password' ? 'text' : 'password';
+        signupPasswordInput.type = type;
+        
+        // Toggle icons
+        if (type === 'password') {
+            eyeIconSignup.style.display = 'block';
+            eyeOffIconSignup.style.display = 'none';
+        } else {
+            eyeIconSignup.style.display = 'none';
+            eyeOffIconSignup.style.display = 'block';
+        }
+    });
+}
+
+// Password toggle functionality for confirm password
+const toggleConfirmPassword = document.getElementById('toggle-confirm-password');
+const confirmPasswordInput = document.getElementById('signup-confirm-password');
+const eyeIconConfirm = document.querySelector('.eye-icon-confirm');
+const eyeOffIconConfirm = document.querySelector('.eye-off-icon-confirm');
+
+if (toggleConfirmPassword && confirmPasswordInput && eyeIconConfirm && eyeOffIconConfirm) {
+    toggleConfirmPassword.addEventListener('click', () => {
+        const type = confirmPasswordInput.type === 'password' ? 'text' : 'password';
+        confirmPasswordInput.type = type;
+        
+        // Toggle icons
+        if (type === 'password') {
+            eyeIconConfirm.style.display = 'block';
+            eyeOffIconConfirm.style.display = 'none';
+        } else {
+            eyeIconConfirm.style.display = 'none';
+            eyeOffIconConfirm.style.display = 'block';
+        }
+    });
+}
+
 document.getElementById('signup-form-element').addEventListener('submit', async (e) => {
     e.preventDefault();
     const errorDiv = document.getElementById('signup-error');
@@ -62,7 +106,7 @@ document.getElementById('signup-form-element').addEventListener('submit', async 
         };
 
         await setDoc(doc(db, 'users', userCredential.user.uid), userDoc);
-        window.location.href = 'profile.html';
+        window.location.href = 'index.html';
     } catch (error) {
         console.error('Signup error:', error);
         errorDiv.textContent = getFirebaseErrorMessage(error) || 'Failed to create account. Please try again.';

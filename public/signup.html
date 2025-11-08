@@ -30,22 +30,46 @@
                     <form id="signup-form-element">
                         <div class="form-group">
                             <label for="signup-name">Full Name</label>
-                            <input type="text" id="signup-name" required placeholder="John Doe">
+                            <input type="text" id="signup-name" required placeholder="Enter your name">
                         </div>
 
                         <div class="form-group">
                             <label for="signup-email">Email Address</label>
-                            <input type="email" id="signup-email" autocomplete="username" required placeholder="you@example.com">
+                            <input type="email" id="signup-email" autocomplete="username" required placeholder="Enter your email">
                         </div>
 
                         <div class="form-group">
                             <label for="signup-password">Password</label>
-                            <input type="password" id="signup-password" autocomplete="new-password" required placeholder="Minimum 6 characters" minlength="6">
+                            <div style="position: relative;">
+                                <input type="password" id="signup-password" autocomplete="new-password" required placeholder="Minimum 6 characters" minlength="6" style="padding-right: 45px;">
+                                <button type="button" id="toggle-signup-password" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 5px; display: flex; align-items: center; justify-content: center;" title="Show/Hide Password">
+                                    <svg class="eye-icon-signup" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6c757d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                    <svg class="eye-off-icon-signup" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6c757d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
 
                         <div class="form-group">
                             <label for="signup-confirm-password">Confirm Password</label>
-                            <input type="password" id="signup-confirm-password" autocomplete="new-password" required placeholder="Re-enter your password">
+                            <div style="position: relative;">
+                                <input type="password" id="signup-confirm-password" autocomplete="new-password" required placeholder="Re-enter your password" style="padding-right: 45px;">
+                                <button type="button" id="toggle-confirm-password" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 5px; display: flex; align-items: center; justify-content: center;" title="Show/Hide Password">
+                                    <svg class="eye-icon-confirm" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6c757d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                    <svg class="eye-off-icon-confirm" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6c757d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
 
                         <button type="submit" class="btn btn-primary" style="width:100%;">Create Account</button>
