@@ -540,6 +540,11 @@ window.viewTripBookings = async function(tripId) {
         const rows = snapshot.docs.map(d => {
             const b = d.data();
             const bookedAt = b.createdAt?.toDate ? b.createdAt.toDate().toLocaleString() : '';
+            const totalAmount = b.totalAmount ? `PKR ${b.totalAmount.toLocaleString()}` : '-';
+            const paymentStatus = b.paymentStatus || 'pending';
+            const statusColor = paymentStatus === 'completed' ? '#28a745' : '#ffc107';
+            const statusBadge = `<span style="background: ${statusColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.85rem;">${paymentStatus}</span>`;
+            
             return `
                 <tr class="table-row">
                     <td>${b.userName || 'Unknown'}</td>
@@ -547,7 +552,9 @@ window.viewTripBookings = async function(tripId) {
                     <td>${b.userPhone || '-'}</td>
                     <td>${b.userLocation || '-'}</td>
                     <td><span class="badge">${b.seatsBooked || 0}</span></td>
-                    <td class="muted">${bookedAt}</td>
+                    <td style="font-weight: 600; color: #28a745;">${totalAmount}</td>
+                    <td>${statusBadge}</td>
+                    <td class="muted" style="font-size: 0.85rem;">${bookedAt}</td>
                 </tr>
             `;
         }).join('');
@@ -562,6 +569,8 @@ window.viewTripBookings = async function(tripId) {
                             <th>Phone</th>
                             <th>Location</th>
                             <th>Seats</th>
+                            <th>Amount</th>
+                            <th>Payment</th>
                             <th>Booked On</th>
                         </tr>
                     </thead>

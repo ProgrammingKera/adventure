@@ -2,8 +2,24 @@ import { db, auth } from '../firebase.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import { doc, getDoc, collection, addDoc, serverTimestamp, updateDoc, increment } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
+// Stripe Configuration
+const STRIPE_PUBLISHABLE_KEY = 'pk_test_51RXrGJ4KfG2Zot2yqATlNthP1rmv44p2UxKkM4fgXUrBBzcCJaogNREypEto3QvO9D7dfuY2mqEBgPGX8c8LgfLD00nAS0nnVR';
+const SERVER_URL = 'https://stripe-render-demo.onrender.com';
+// Secret Key (for server-side only): sk_test_51RXrGJ4KfG2Zot2yUkAYEtgYx2whPy0IlsqgeNSLYFeHrcXrR3PXDz5KNeaTzYsGMnifRapIx8puHjdOJqsYfQIj00MPWfhprw
+let stripe = null;
+
 let tripId = null;
 let tripData = null;
+
+// Initialize Stripe
+function initStripe() {
+    if (window.Stripe) {
+        stripe = window.Stripe(STRIPE_PUBLISHABLE_KEY);
+        console.log('✅ Stripe initialized successfully');
+    } else {
+        console.error('❌ Stripe.js not loaded');
+    }
+}
 
 function getQueryParam(name) {
     const urlParams = new URLSearchParams(window.location.search);
@@ -60,6 +76,9 @@ function prefillUser(user, userDocData) {
 }
 
 async function init() {
+    // Initialize Stripe
+    initStripe();
+    
     tripId = getQueryParam('tripId');
     if (!tripId) {
         window.location.href = 'index.html';
@@ -95,7 +114,7 @@ async function init() {
         const user = auth.currentUser;
         if (!user) {
             alert('Please login to continue');
-            window.location.href = 'profile.html';
+            window.location.href = 'login.html';
             return;
         }
 
@@ -123,32 +142,117 @@ async function init() {
                 return;
             }
 
-            // Create booking
-            await addDoc(collection(db, 'bookings'), {
-                tripId: tripId,
-                userId: auth.currentUser.uid,
-                userName,
-                userEmail,
-                userPhone,
-                userLocation,
-                seatsBooked,
-                createdAt: serverTimestamp()
+            // Calculate total amount
+            const totalAmount = seatsBooked * (freshTrip.pricePerSeat || 0);
+            console.log('💰 Total amount: PKR', totalAmount);
+            
+            // Check Stripe
+            if (!stripe) {
+                errorDiv.textContent = 'Payment system not ready. Please refresh.';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+            
+            // Show payment modal
+            const submitBtn = form.querySelector('button[type="submit"]');
+            submitBtn.textContent = 'Opening Payment...';
+            submitBtn.disabled = true;
+
+            // Create payment modal
+            const modal = document.createElement('div');
+            modal.innerHTML = `
+                <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 9999;">
+                    <div style="background: white; padding: 2rem; border-radius: 12px; max-width: 500px; width: 90%;">
+                        <h2 style="margin-bottom: 1rem; color: #28a745;">💳 Payment</h2>
+                        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                            <p style="margin: 0.3rem 0;"><strong>Trip:</strong> ${freshTrip.description}</p>
+                            <p style="margin: 0.3rem 0;"><strong>Seats:</strong> ${seatsBooked}</p>
+                            <p style="margin: 0.3rem 0; font-size: 1.2rem; color: #28a745;"><strong>Total:</strong> PKR ${totalAmount.toLocaleString()}</p>
+                        </div>
+                        <div id="card-el" style="border: 1px solid #ccc; border-radius: 8px; padding: 12px; margin-bottom: 1rem;"></div>
+                        <div id="card-err" style="color: #dc3545; margin-bottom: 1rem; font-size: 0.9rem;"></div>
+                        <div style="display: flex; gap: 1rem;">
+                            <button id="pay-btn" class="btn btn-primary" style="flex: 1;">Pay PKR ${totalAmount.toLocaleString()}</button>
+                            <button id="cancel-btn" class="btn" style="flex: 1; background: #6c757d; color: white;">Cancel</button>
+                        </div>
+                        <p style="margin-top: 1rem; text-align: center; color: #6c757d; font-size: 0.9rem;">🔒 Secured by Stripe</p>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            // Create card element
+            const elements = stripe.elements();
+            const card = elements.create('card', {
+                style: { base: { fontSize: '16px', color: '#32325d' } }
+            });
+            card.mount('#card-el');
+            card.on('change', (e) => {
+                document.getElementById('card-err').textContent = e.error ? e.error.message : '';
             });
 
-            // Update trip booked seats
-            await updateDoc(doc(db, 'trips', tripId), { bookedSeats: increment(seatsBooked) });
+            // Cancel
+            document.getElementById('cancel-btn').onclick = () => {
+                modal.remove();
+                submitBtn.textContent = 'Checkout';
+                submitBtn.disabled = false;
+            };
 
-            successDiv.textContent = 'Booking confirmed! You can view it in your Profile > My Bookings.';
-            successDiv.classList.remove('hidden');
+            // Pay
+            document.getElementById('pay-btn').onclick = async () => {
+                const payBtn = document.getElementById('pay-btn');
+                payBtn.textContent = 'Processing...';
+                payBtn.disabled = true;
 
-            // Navigate after short delay
-            setTimeout(() => {
-                window.location.href = 'profile.html';
-            }, 1200);
+                try {
+                    const {paymentMethod, error} = await stripe.createPaymentMethod({
+                        type: 'card',
+                        card: card,
+                        billing_details: { name: userName, email: userEmail }
+                    });
+
+                    if (error) throw new Error(error.message);
+
+                    console.log('✅ Payment method:', paymentMethod.id);
+
+                    // Save booking
+                    await addDoc(collection(db, 'bookings'), {
+                        tripId, userId: user.uid, userName, userEmail, userPhone, userLocation,
+                        seatsBooked, totalAmount,
+                        paymentStatus: 'completed',
+                        paymentMethod: 'stripe',
+                        stripePaymentMethodId: paymentMethod.id,
+                        createdAt: serverTimestamp()
+                    });
+
+                    // Update seats
+                    await updateDoc(doc(db, 'trips', tripId), {
+                        bookedSeats: increment(seatsBooked)
+                    });
+
+                    modal.remove();
+                    successDiv.textContent = '✅ Payment successful! Redirecting...';
+                    successDiv.classList.remove('hidden');
+
+                    setTimeout(() => window.location.href = 'profile.html', 2000);
+
+                } catch (err) {
+                    console.error('❌ Payment error:', err);
+                    document.getElementById('card-err').textContent = err.message;
+                    payBtn.textContent = 'Pay PKR ' + totalAmount.toLocaleString();
+                    payBtn.disabled = false;
+                }
+            };
+
         } catch (err) {
-            console.error('Booking error:', err);
+            console.error('❌ Booking error:', err);
             errorDiv.textContent = err.message || 'Failed to complete booking.';
             errorDiv.classList.remove('hidden');
+            
+            // Reset button
+            const submitBtn = form.querySelector('button[type="submit"]');
+            submitBtn.textContent = 'Checkout';
+            submitBtn.disabled = false;
         }
     });
 }
