@@ -183,10 +183,13 @@ async function loadFeaturedTrips() {
             } catch (_) {}
         })();
 
-        // Keep only upcoming/valid trips
+        // Show only today and future trips (exclude past)
+        const today = new Date();
+        const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        
         const upcomingDocs = querySnapshot.docs.filter(doc => {
             const d = getTripDate(doc.data());
-            return d && d >= new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            return d && d >= startOfToday; // Today or future only
         });
 
         // Sort by soonest date first

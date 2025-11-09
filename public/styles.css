@@ -887,20 +887,178 @@ footer { background: #0f1a14; color: #cfe1d7; margin-top: 3rem; }
   display: none;
 }
 
+/* Explore Tabs Navigation */
+.explore-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  padding: 0.5rem;
+  background: #f8f9fa;
+  border-radius: 12px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+}
+
+.explore-tab {
+  flex: 1;
+  min-width: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-light);
+}
+
+.explore-tab:hover {
+  background: rgba(40, 167, 69, 0.1);
+  color: var(--primary-color);
+}
+
+.explore-tab.active {
+  background: var(--primary-color);
+  color: white;
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.explore-tab .tab-icon {
+  font-size: 1.2rem;
+}
+
+.explore-tab .tab-label {
+  font-weight: 600;
+}
+
 /* Explore layout */
-.explore-layout { display: grid; grid-template-columns: 320px 1fr; gap: 1.5rem; align-items: start; }
-.city-panel { position: sticky; top: 90px; align-self: start; }
-.city-grid { display: grid; grid-template-columns: 1fr; gap: .75rem; }
-.city-card { background: var(--white); border: 1px solid #eef5f0; border-radius: 10px; padding: .9rem 1rem; cursor: pointer; box-shadow: var(--shadow); transition: box-shadow .2s ease, transform .2s ease; }
-.city-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
-.city-card.active { border-color: var(--primary-color); }
-.city-name { color: var(--primary-color); font-weight: 700; }
-.city-meta { color: var(--text-light); font-size: .9rem; }
-.trips-panel { min-height: 300px; }
+.explore-layout { 
+  display: grid; 
+  grid-template-columns: 320px 1fr; 
+  gap: 1.5rem; 
+  align-items: start;
+  scroll-margin-top: 100px;
+}
+
+.city-panel { 
+  position: sticky; 
+  top: 90px; 
+  align-self: start;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  padding-right: 0.5rem;
+  scroll-behavior: smooth;
+}
+
+.city-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.city-panel::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.city-panel::-webkit-scrollbar-thumb {
+  background: var(--primary-color);
+  border-radius: 10px;
+}
+
+.city-grid { 
+  display: grid; 
+  grid-template-columns: 1fr; 
+  gap: .75rem; 
+}
+
+.city-card { 
+  background: var(--white); 
+  border: 2px solid #eef5f0; 
+  border-radius: 12px; 
+  padding: 1rem 1.25rem; 
+  cursor: pointer; 
+  box-shadow: var(--shadow); 
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.city-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 4px;
+  background: var(--primary-color);
+  transform: scaleY(0);
+  transition: transform 0.3s ease;
+}
+
+.city-card:hover { 
+  box-shadow: var(--shadow-hover); 
+  transform: translateX(4px);
+  border-color: var(--primary-color);
+}
+
+.city-card:hover::before {
+  transform: scaleY(1);
+}
+
+.city-card.active { 
+  border-color: var(--primary-color);
+  background: linear-gradient(135deg, #ffffff 0%, #f0f9f4 100%);
+  box-shadow: 0 4px 16px rgba(40, 167, 69, 0.2);
+}
+
+.city-card.active::before {
+  transform: scaleY(1);
+}
+
+.city-name { 
+  color: var(--primary-color); 
+  font-weight: 700;
+  font-size: 1.05rem;
+  margin-bottom: 0.25rem;
+}
+
+.city-meta { 
+  color: var(--text-light); 
+  font-size: .9rem; 
+}
+
+.trips-panel { 
+  min-height: 300px;
+  scroll-margin-top: 100px;
+}
 
 @media (max-width: 1000px) {
-  .explore-layout { grid-template-columns: 1fr; }
-  .city-panel { position: static; }
+  .explore-tabs {
+    justify-content: flex-start;
+  }
+  
+  .explore-tab {
+    flex: 0 0 auto;
+    min-width: 100px;
+  }
+  
+  .explore-layout { 
+    grid-template-columns: 1fr; 
+  }
+  
+  .city-panel { 
+    position: static;
+    max-height: none;
+    margin-bottom: 1.5rem;
+  }
+  
+  .city-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
 }
 
 /* Auth Pages Styles */

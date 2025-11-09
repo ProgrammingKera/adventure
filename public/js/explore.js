@@ -139,19 +139,48 @@ async function loadDestinations() {
     }
 }
 
+// Update tabs
+function updateTabs(view) {
+    // Update tab buttons
+    document.querySelectorAll('.explore-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    const activeTab = document.querySelector(`[data-view="${view}"]`);
+    if (activeTab) activeTab.classList.add('active');
+    
+    // Show/hide tabs based on view
+    if (view === 'cities') {
+        document.getElementById('tab-cities').style.display = 'flex';
+        document.getElementById('tab-agencies').style.display = 'none';
+        document.getElementById('tab-trips').style.display = 'none';
+    } else if (view === 'agencies') {
+        document.getElementById('tab-cities').style.display = 'flex';
+        document.getElementById('tab-agencies').style.display = 'flex';
+        document.getElementById('tab-trips').style.display = 'none';
+    } else if (view === 'trips') {
+        document.getElementById('tab-cities').style.display = 'flex';
+        document.getElementById('tab-agencies').style.display = 'flex';
+        document.getElementById('tab-trips').style.display = 'flex';
+    }
+}
+
+// Scroll to main content (for mobile)
+function scrollToContent() {
+    const mainContent = document.getElementById('main-content');
+    if (mainContent && window.innerWidth <= 1000) {
+        mainContent.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
 // Render cities list
 function renderCities(cityEntries) {
     currentView = 'cities';
     selectedCity = null;
     selectedAgency = null;
     
-    // Update breadcrumb
-    document.getElementById('breadcrumb-home').style.fontWeight = '700';
-    document.getElementById('breadcrumb-home').style.color = 'var(--text-dark)';
-    document.getElementById('breadcrumb-sep1').style.display = 'none';
-    document.getElementById('breadcrumb-city').style.display = 'none';
-    document.getElementById('breadcrumb-sep2').style.display = 'none';
-    document.getElementById('breadcrumb-agency').style.display = 'none';
+    // Update tabs
+    updateTabs('cities');
     
     // Hide agency info
     showAgencyInfo(null);
@@ -164,17 +193,22 @@ function renderCities(cityEntries) {
     citiesContainer.innerHTML = cityEntries.map((item, idx) => `
         <div class="city-card" data-city="${item.city}">
             <div class="city-name">${item.city}</div>
-            <div class="city-meta">${item.count} trip(s)</div>
+            <div class="city-meta">${item.count} ${item.count === 1 ? 'agency' : 'agencies'}</div>
         </div>
     `).join('');
     
     // Update content area
     document.getElementById('content-title').textContent = 'Select a City';
-    document.getElementById('content-area').innerHTML = '<p style="color: var(--text-light); text-align: center; padding: 2rem;">Click on a city to view agencies</p>';
+    document.getElementById('content-area').innerHTML = '<p style="color: var(--text-light); text-align: center; padding: 2rem;">Choose a city to explore travel agencies</p>';
     
     // Attach click handlers
     document.querySelectorAll('.city-card').forEach(card => {
         card.addEventListener('click', () => {
+            // Remove active from all
+            document.querySelectorAll('.city-card').forEach(c => c.classList.remove('active'));
+            // Add active to clicked
+            card.classList.add('active');
+            
             const city = card.getAttribute('data-city');
             showAgenciesForCity(city);
         });
@@ -187,16 +221,13 @@ function showAgenciesForCity(city) {
     selectedCity = city;
     selectedAgency = null;
     
-    // Update breadcrumb
-    document.getElementById('breadcrumb-home').style.fontWeight = '600';
-    document.getElementById('breadcrumb-home').style.color = 'var(--primary-color)';
-    document.getElementById('breadcrumb-sep1').style.display = 'inline';
-    document.getElementById('breadcrumb-city').style.display = 'inline';
-    document.getElementById('breadcrumb-city').textContent = city;
-    document.getElementById('breadcrumb-city').style.fontWeight = '700';
-    document.getElementById('breadcrumb-city').style.color = 'var(--text-dark)';
-    document.getElementById('breadcrumb-sep2').style.display = 'none';
-    document.getElementById('breadcrumb-agency').style.display = 'none';
+    // Update tabs
+    updateTabs('agencies');
+    const tabAgenciesLabel = document.getElementById('tab-agencies-label');
+    if (tabAgenciesLabel) tabAgenciesLabel.textContent = city;
+    
+    // Scroll to content on mobile
+    scrollToContent();
     
     // Get agencies in this city (by agency location)
     const cityAgencies = allAgencies.filter(a => String(a.location || '').trim() === city);
@@ -223,19 +254,19 @@ function showAgenciesForCity(city) {
     
     agenciesContainer.innerHTML = agenciesWithCount.map(agency => `
         <div class="city-card" data-agency-id="${agency.id}">
-            <div class="city-name">${agency.name || 'Agency'}</div>
+            <div class="city-name">${agency.name.replace(/[\u{1F600}-\u{1F64F}]/gu, '') || 'Agency'}</div>
             ${agency.description ? `<div class="city-meta" style="font-size: 0.85rem; margin: 0.5rem 0; color: var(--text-light);">${agency.description.substring(0, 100)}${agency.description.length > 100 ? '...' : ''}</div>` : ''}
             <div class="city-meta" style="display: flex; justify-content: space-between; align-items: center;">
-                <span>${agency.tripCount} trip(s)</span>
+                <span>${agency.tripCount} ${agency.tripCount === 1 ? 'trip' : 'trips'}</span>
                 ${agency.rating ? `<span style="color: #FFA500;">★ ${Number(agency.rating).toFixed(1)}</span>` : ''}
             </div>
         </div>
     `).join('');
-    
+
     // Update content area
-    document.getElementById('content-title').textContent = `${city} - Select Agency`;
+    document.getElementById('content-title').textContent = `${city} Agencies`;
     document.getElementById('content-area').innerHTML = '<p style="color: var(--text-light); text-align: center; padding: 2rem;">Click on an agency to view their trips</p>';
-    
+
     // Attach click handlers
     document.querySelectorAll('[data-agency-id]').forEach(card => {
         card.addEventListener('click', () => {
@@ -251,12 +282,12 @@ function showTripsForAgency(city, agency) {
     currentView = 'trips';
     selectedAgency = agency;
     
-    // Update breadcrumb
-    document.getElementById('breadcrumb-city').style.fontWeight = '600';
-    document.getElementById('breadcrumb-city').style.color = 'var(--primary-color)';
-    document.getElementById('breadcrumb-sep2').style.display = 'inline';
-    document.getElementById('breadcrumb-agency').style.display = 'inline';
-    document.getElementById('breadcrumb-agency').textContent = agency.name || 'Agency';
+    // Update tabs
+    updateTabs('trips');
+    document.getElementById('tab-trips-label').textContent = agency.name || 'Trips';
+    
+    // Scroll to content on mobile
+    scrollToContent();
     
     // Filter trips for this agency
     const trips = allTrips.filter(t => t.agencyId === agency.id);
@@ -329,18 +360,24 @@ function renderTrips(trips) {
     }).join('');
 }
 
-// Breadcrumb navigation
-document.getElementById('breadcrumb-home').addEventListener('click', () => {
-    if (currentView !== 'cities') {
-        loadDestinations();
-    }
-});
+// Breadcrumb navigation (if elements exist)
+const breadcrumbHome = document.getElementById('breadcrumb-home');
+if (breadcrumbHome) {
+    breadcrumbHome.addEventListener('click', () => {
+        if (currentView !== 'cities') {
+            loadDestinations();
+        }
+    });
+}
 
-document.getElementById('breadcrumb-city').addEventListener('click', () => {
-    if (currentView === 'trips' && selectedCity) {
-        showAgenciesForCity(selectedCity);
-    }
-});
+const breadcrumbCity = document.getElementById('breadcrumb-city');
+if (breadcrumbCity) {
+    breadcrumbCity.addEventListener('click', () => {
+        if (currentView === 'trips' && selectedCity) {
+            showAgenciesForCity(selectedCity);
+        }
+    });
+}
 
 // Global function for booking
 window.bookTrip = async function(tripId) {
@@ -552,8 +589,42 @@ function handleURLParameters() {
     }
 }
 
+// Initialize tab click handlers
+function initTabHandlers() {
+    const tabCities = document.getElementById('tab-cities');
+    const tabAgencies = document.getElementById('tab-agencies');
+    
+    if (tabCities) {
+        tabCities.addEventListener('click', () => {
+            if (currentView !== 'cities') {
+                // Go back to cities view
+                const cityEntries = {};
+                allAgencies.forEach(agency => {
+                    const city = String(agency.location || 'Other').trim();
+                    if (!cityEntries[city]) cityEntries[city] = [];
+                    cityEntries[city].push(agency);
+                });
+                const cities = Object.entries(cityEntries)
+                    .map(([city, agencies]) => ({ city, count: agencies.length }))
+                    .sort((a, b) => b.count - a.count);
+                renderCities(cities);
+            }
+        });
+    }
+    
+    if (tabAgencies) {
+        tabAgencies.addEventListener('click', () => {
+            if (currentView === 'trips' && selectedCity) {
+                // Go back to agencies view
+                showAgenciesForCity(selectedCity);
+            }
+        });
+    }
+}
+
 // Initialize page
 loadDestinations().then(() => {
+    initTabHandlers();
     handleURLParameters();
 });
 

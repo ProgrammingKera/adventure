@@ -31,19 +31,26 @@
 
     <div class="container">
         <section class="section">
-            <h2 class="section-title">Explore Destinations</h2>
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <h2 class="section-title" style="margin-bottom: 0.5rem;">Explore Destinations</h2>
+                <p style="color: var(--text-light); font-size: 1rem;">Discover amazing trips across Pakistan</p>
+            </div>
             
-            <!-- Breadcrumb Navigation -->
-            <div id="breadcrumb" style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; color: var(--text-light); font-size: 0.95rem;">
-                <span id="breadcrumb-home" style="cursor: pointer; color: var(--primary-color); font-weight: 600;">Cities</span>
-                <span id="breadcrumb-sep1" style="display: none;">›</span>
-                <span id="breadcrumb-city" style="display: none; cursor: pointer; color: var(--primary-color);"></span>
-                <span id="breadcrumb-sep2" style="display: none;">›</span>
-                <span id="breadcrumb-agency" style="display: none; color: var(--text-dark); font-weight: 600;"></span>
+            <!-- Modern Tab Navigation -->
+            <div class="explore-tabs" id="explore-tabs">
+                <button class="explore-tab active" data-view="cities" id="tab-cities">
+                    <span class="tab-label">Cities</span>
+                </button>
+                <button class="explore-tab" data-view="agencies" id="tab-agencies" style="display: none;">
+                    <span class="tab-label" id="tab-agencies-label">Agencies</span>
+                </button>
+                <button class="explore-tab" data-view="trips" id="tab-trips" style="display: none;">
+                    <span class="tab-label" id="tab-trips-label">Trips</span>
+                </button>
             </div>
             
             <div class="explore-layout">
-                <aside class="city-panel">
+                <aside class="city-panel" id="sidebar-panel">
                     <!-- Cities List -->
                     <div id="cities-container" class="city-grid">
                         <div class="loading">
@@ -57,7 +64,7 @@
                     </div>
                 </aside>
                 
-                <main class="trips-panel">
+                <main class="trips-panel" id="main-content">
                     <div id="content-title" class="section-title" style="margin-top:0; font-size:1.5rem;">Select a City</div>
                     
                     <!-- Agency Info Section -->
