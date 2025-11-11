@@ -47,74 +47,27 @@ app.post('/api/generate-plan', async (req, res) => {
 
     const datesList = dates.join(', ');
 
-    const prompt = `You are a JSON-only response generator. Generate a trip plan for ${destination} from ${startDate} to ${endDate} (${days} days) for ${numberOfPeople} people.
+    const prompt = `Generate trip plan JSON for ${destination}, ${startDate} to ${endDate} (${days} days), ${numberOfPeople} people.
+Budget: ${budget}, Accommodation: ${accommodationType}, Preferences: ${preferences.join(', ')}, Special: ${specialRequirements || 'None'}
 
-Budget: ${budget}
-Accommodation Type: ${accommodationType}
-Preferences: ${preferences.join(', ')}
-Special Requirements: ${specialRequirements || 'None'}
-
-CRITICAL: You MUST respond with ONLY valid JSON. NO markdown code blocks. NO text before or after. NO explanations. Start with { and end with }.
-
-Required JSON structure:
+Return ONLY valid JSON (no markdown, no text):
 {
-  "weather": [
-    Provide weather for ALL ${days} days: ${datesList}
-    Each weather object: {"date": "YYYY-MM-DD", "condition": "sunny/cloudy/rainy/partly-cloudy", "temperature": "high/low in Celsius", "description": "brief"}
-  ],
-  "touristAttractions": [
-    Include 5-6 famous tourist attractions in ${destination}
-    Each attraction: {"name": "Name", "description": "Detailed description", "location": "Area/Address"}
-  ],
-  "restaurants": [
-    Include 5-6 popular restaurants in ${destination}
-    Each restaurant: {"name": "Name", "cuisine": "Type", "priceRange": "PKR amount", "rating": "4.5", "description": "Brief"}
-  ],
-  "packingEssentials": [
-    List 10-12 essential items as strings
-    Example: ["Item 1", "Item 2"]
-  ],
-  "accommodations": [
-    Include 2-3 ${accommodationType} options
-    Each accommodation: {"name": "Name", "price": "PKR amount per night", "location": "Area", "facilities": ["Facility1", "Facility2", "Facility3"], "rating": "4.2", "description": "Brief"}
-  ],
-  "localTransportation": {
-    "options": [
-      Include 3-4 transportation options
-      Each option: {"type": "Type", "cost": "PKR amount", "description": "How to use"}
-    ]
-  },
-  "localEvents": [
-    Include any local events/festivals if available
-    Each event: {"name": "Name", "date": "Date", "description": "Description"}
-  ],
-  "tripCost": {
-    "accommodation": "PKR total",
-    "food": "PKR total",
-    "transportation": "PKR total",
-    "attractions": "PKR total",
-    "miscellaneous": "PKR total",
-    "total": "PKR grand total"
-    Calculate for ${numberOfPeople} people for ${days} days within ${budget}
-  },
-  "safetyTips": [
-    Include 6-8 safety tips as strings
-    Example: ["Tip 1", "Tip 2"]
-  ]
+  "specialRequirementsNote": "${specialRequirements && specialRequirements !== 'None' ? 'How special requirements addressed' : ''}",
+  "weather": [{"date":"YYYY-MM-DD","condition":"sunny/cloudy/rainy/partly-cloudy","temperature":"XX°C","description":"text"}] (${days} days: ${datesList}),
+  "touristAttractions": [{"name":"","description":"","location":""}] (5-6 items),
+  "restaurants": [{"name":"","cuisine":"","priceRange":"PKR X","rating":"4.5","description":""}] (5-6 items),
+  "packingEssentials": ["item1","item2"] (10-12 items),
+  "accommodations": [{"name":"","price":"PKR X/night","location":"","facilities":["f1","f2","f3"],"rating":"4.2","description":""}] (2-3 ${accommodationType}),
+  "localTransportation": {"options":[{"type":"","cost":"PKR X","description":""}]} (3-4 options),
+  "localEvents": [{"name":"","date":"","description":""}],
+  "tripCost": {"accommodation":"PKR X","food":"PKR X","transportation":"PKR X","attractions":"PKR X","miscellaneous":"PKR X","total":"PKR X"} (for ${numberOfPeople} people, ${days} days, ${budget}),
+  "safetyTips": ["tip1","tip2"] (6-8 tips)
 }
 
-STRICT REQUIREMENTS:
-- Weather condition MUST be exactly: "sunny", "cloudy", "rainy", or "partly-cloudy"
-- Provide weather for ALL ${days} dates: ${datesList}
-- Ratings must be numbers like "4.5" only, NOT "4.5 out of 5"
-- All prices in PKR format like "PKR 5000"
-- Accommodations must have exactly 3 facilities each
-- Calculate realistic trip costs based on ${budget} for ${numberOfPeople} people for ${days} days
-
-RESPOND WITH ONLY THE JSON OBJECT. NO OTHER TEXT WHATSOEVER.`;
+Rules: Weather exact values only, ratings as numbers, 3 facilities per accommodation, address special requirements if provided.`;
 
     const response = await axios.post(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=AIzaSyAUXuxdvNhEGMLNdrX6DBPhhWmyG5I6lcg',
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=AIzaSyBy3SwEG8zDtwdrq-BcJnTCW19iuVjzxQ4',
       {
         contents: [{
           parts: [{

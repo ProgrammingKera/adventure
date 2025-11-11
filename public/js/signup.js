@@ -2,11 +2,14 @@ import { db, auth } from '../firebase.js';
 import {
     createUserWithEmailAndPassword,
     updateProfile,
+    signInWithPopup,
+    GoogleAuthProvider,
     onAuthStateChanged
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import {
     doc,
     setDoc,
+    getDoc,
     serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
@@ -113,6 +116,56 @@ document.getElementById('signup-form-element').addEventListener('submit', async 
         errorDiv.classList.remove('hidden');
     }
 });
+
+// Google Sign-Up
+const googleSignupBtn = document.getElementById('google-signup-btn');
+if (googleSignupBtn) {
+    googleSignupBtn.addEventListener('click', async () => {
+        const errorDiv = document.getElementById('signup-error');
+        errorDiv.classList.add('hidden');
+        
+        try {
+            const provider = new GoogleAuthProvider();
+            const result = await signInWithPopup(auth, provider);
+            const user = result.user;
+            
+            // Check if user document exists
+            const userDocRef = doc(db, 'users', user.uid);
+            const userDoc = await getDoc(userDocRef);
+            
+            if (!userDoc.exists()) {
+                // Create user document for new Google sign-up users
+                await setDoc(userDocRef, {
+                    id: user.uid,
+                    name: user.displayName || 'User',
+                    email: user.email,
+                    imageUrl: user.photoURL || null,
+                    phone: null,
+                    bio: null,
+                    city: null,
+                    userType: 'USER',
+                    activeRole: 'TRAVELER',
+                    roles: ['TRAVELER'],
+                    authProvider: 'google',
+                    createdAt: serverTimestamp()
+                });
+            }
+            
+            // Redirect based on user type
+            if (user.email === 'admin@gmail.com') {
+                window.location.href = 'admin-panel.html';
+            } else {
+                window.location.href = 'index.html';
+            }
+        } catch (error) {
+            console.error('Google Sign-Up error:', error);
+            if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
+                errorDiv.textContent = 'Failed to sign up with Google. Please try again.';
+                errorDiv.classList.remove('hidden');
+            }
+        }
+    });
+}
 
 function getFirebaseErrorMessage(error) {
     const code = error.code;

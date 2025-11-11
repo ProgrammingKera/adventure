@@ -92,6 +92,148 @@ document.getElementById('edit-profile-btn')?.addEventListener('click', () => {
     form.classList.toggle('hidden');
 });
 
+// Change Password Button
+document.getElementById('change-password-btn')?.addEventListener('click', () => {
+    showChangePasswordModal();
+});
+
+// Show Change Password Modal
+function showChangePasswordModal() {
+    const user = auth.currentUser;
+    const isGoogleUser = user?.providerData?.some(provider => provider.providerId === 'google.com');
+    
+    const modalHTML = `
+        <div id="change-password-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 10000;" onclick="if(event.target.id==='change-password-modal') this.remove();">
+            <div style="background: white; padding: 2rem; border-radius: 12px; max-width: 450px; width: 90%;" onclick="event.stopPropagation();">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h2 style="margin: 0; color: var(--text-dark);">${isGoogleUser ? 'Set Password' : 'Change Password'}</h2>
+                    <button onclick="document.getElementById('change-password-modal').remove()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-light);">&times;</button>
+                </div>
+                
+                ${isGoogleUser ? `
+                    <div style="padding: 0.75rem; background: #e7f3ff; border-left: 4px solid #2196F3; margin-bottom: 1rem; border-radius: 4px;">
+                        <p style="margin: 0; font-size: 0.9rem; color: #1976D2;">
+                            <strong>Note:</strong> You signed in with Google. Set a password to enable email/password login.
+                        </p>
+                    </div>
+                ` : ''}
+                
+                <form id="user-change-password-form">
+                    ${!isGoogleUser ? `
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Current Password</label>
+                            <input type="password" id="user-current-password" required style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px;">
+                        </div>
+                    ` : ''}
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">New Password</label>
+                        <input type="password" id="user-new-password" required minlength="6" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Confirm New Password</label>
+                        <input type="password" id="user-confirm-password" required minlength="6" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                    <div id="user-password-message" style="margin-bottom: 1rem; display: none; padding: 0.75rem; border-radius: 4px;"></div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-bottom: 0.5rem;">${isGoogleUser ? 'Set Password' : 'Update Password'}</button>
+                    <button type="button" onclick="document.getElementById('change-password-modal').remove()" class="btn btn-secondary" style="width: 100%;">Cancel</button>
+                </form>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    const existingModal = document.getElementById('change-password-modal');
+    if (existingModal) existingModal.remove();
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Setup form handler
+    document.getElementById('user-change-password-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await changeUserPassword();
+    });
+}
+
+// Change User Password
+async function changeUserPassword() {
+    const user = auth.currentUser;
+    const isGoogleUser = user?.providerData?.some(provider => provider.providerId === 'google.com');
+    
+    const currentPasswordInput = document.getElementById('user-current-password');
+    const currentPassword = currentPasswordInput ? currentPasswordInput.value : null;
+    const newPassword = document.getElementById('user-new-password').value;
+    const confirmPassword = document.getElementById('user-confirm-password').value;
+    const messageDiv = document.getElementById('user-password-message');
+    
+    // Validation
+    if (newPassword !== confirmPassword) {
+        messageDiv.style.display = 'block';
+        messageDiv.style.background = '#fee';
+        messageDiv.style.color = 'red';
+        messageDiv.textContent = 'New passwords do not match!';
+        return;
+    }
+    
+    if (newPassword.length < 6) {
+        messageDiv.style.display = 'block';
+        messageDiv.style.background = '#fee';
+        messageDiv.style.color = 'red';
+        messageDiv.textContent = 'Password must be at least 6 characters!';
+        return;
+    }
+    
+    try {
+        // Import required functions
+        const { EmailAuthProvider, reauthenticateWithCredential, updatePassword } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+        
+        // For Google users, directly set password (no re-authentication needed)
+        if (isGoogleUser) {
+            await updatePassword(user, newPassword);
+            
+            messageDiv.style.display = 'block';
+            messageDiv.style.background = '#efe';
+            messageDiv.style.color = 'green';
+            messageDiv.textContent = 'Password set successfully! You can now login with email/password.';
+        } else {
+            // For email/password users, re-authenticate first
+            const credential = EmailAuthProvider.credential(user.email, currentPassword);
+            await reauthenticateWithCredential(user, credential);
+            
+            // Update password
+            await updatePassword(user, newPassword);
+            
+            messageDiv.style.display = 'block';
+            messageDiv.style.background = '#efe';
+            messageDiv.style.color = 'green';
+            messageDiv.textContent = 'Password updated successfully!';
+        }
+        
+        // Clear form
+        document.getElementById('user-change-password-form').reset();
+        
+        // Close modal after 2 seconds
+        setTimeout(() => {
+            document.getElementById('change-password-modal').remove();
+        }, 2000);
+        
+    } catch (error) {
+        console.error('Password change error:', error);
+        messageDiv.style.display = 'block';
+        messageDiv.style.background = '#fee';
+        messageDiv.style.color = 'red';
+        
+        if (error.code === 'auth/wrong-password') {
+            messageDiv.textContent = 'Current password is incorrect!';
+        } else if (error.code === 'auth/weak-password') {
+            messageDiv.textContent = 'New password is too weak!';
+        } else if (error.code === 'auth/requires-recent-login') {
+            messageDiv.textContent = 'Please logout and login again before setting password.';
+        } else {
+            messageDiv.textContent = 'Failed to update password. Please try again.';
+        }
+    }
+}
+
 // Cancel Edit
 document.getElementById('cancel-edit-btn')?.addEventListener('click', () => {
     document.getElementById('edit-profile-form').classList.add('hidden');

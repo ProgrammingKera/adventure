@@ -1,6 +1,6 @@
 import { db, auth } from '../firebase.js';
-import { signInWithEmailAndPassword, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import { collection, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import { collection, query, where, getDocs, doc, setDoc, getDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 onAuthStateChanged(auth, async (user) => {
 	if (user) {
@@ -64,6 +64,44 @@ function getFirebaseErrorMessage(error) {
         default:
             return null;
     }
+}
+
+// Google Sign-In
+const googleSignInBtn = document.getElementById('google-signin-btn');
+if (googleSignInBtn) {
+    googleSignInBtn.addEventListener('click', async () => {
+        const errorDiv = document.getElementById('login-error');
+        errorDiv.classList.add('hidden');
+        
+        try {
+            const provider = new GoogleAuthProvider();
+            const result = await signInWithPopup(auth, provider);
+            const user = result.user;
+            
+            // Check if user document exists, if not create one
+            const userDocRef = doc(db, 'users', user.uid);
+            const userDoc = await getDoc(userDocRef);
+            
+            if (!userDoc.exists()) {
+                // Create user document for new Google sign-in users
+                await setDoc(userDocRef, {
+                    name: user.displayName || 'User',
+                    email: user.email,
+                    photoURL: user.photoURL || null,
+                    createdAt: serverTimestamp(),
+                    authProvider: 'google'
+                });
+            }
+            
+            await redirectAfterLogin(user.uid);
+        } catch (error) {
+            console.error('Google Sign-In error:', error);
+            if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
+                errorDiv.textContent = 'Failed to sign in with Google. Please try again.';
+                errorDiv.classList.remove('hidden');
+            }
+        }
+    });
 }
 
 async function redirectAfterLogin(userId) {

@@ -296,7 +296,7 @@ export function formatStructuredPlan(plan, formData) {
                     </div>
                     <div style="width: 1px; background: #e0e0e0;"></div>
                     <div style="text-align: center;">
-                        <div style="font-size: 0.85rem; color: #666; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 1px;">📅 Duration</div>
+                        <div style="font-size: 0.85rem; color: #666; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 1px;">Duration</div>
                         <div style="font-size: 1.2rem; font-weight: 700; color: var(--primary-color);">${formData.startDate} to ${formData.endDate}</div>
                     </div>
                     <div style="width: 1px; background: #e0e0e0;"></div>
@@ -576,19 +576,16 @@ export function formatStructuredPlan(plan, formData) {
     if (plan.safetyTips && plan.safetyTips.length > 0) {
         html += `
             <div class="plan-section" style="margin-bottom: 3rem;">
-                <h2 class="section-title" style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
-                    <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%); display: flex; align-items: center; justify-content: center;">
-                        <span style="font-size: 1.5rem;">🛡️</span>
-                    </div>
+                <h2 style="font-size: 1.75rem; font-weight: 700; color: #1e293b; margin-bottom: 1.5rem; padding-bottom: 0.75rem; border-bottom: 3px solid var(--primary-color);">
                     Safety Tips
                 </h2>
-                <div class="modern-card" style="padding: 2rem; background: linear-gradient(135deg, #fff8e1 0%, #ffffff 100%); border-left: 5px solid #ffc107;">
+                <div class="modern-card" style="padding: 2rem; background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%); border-left: 5px solid var(--primary-color);">
                     <div style="display: grid; gap: 1rem;">
         `;
         plan.safetyTips.forEach(tip => {
             html += `
                 <div style="display: flex; align-items: start; gap: 1rem; padding: 1rem 1.25rem; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                    <div style="width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 0.25rem;">
+                    <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--primary-color); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 0.25rem;">
                         <span style="color: white; font-size: 0.75rem; font-weight: 700;">✓</span>
                     </div>
                     <p style="color: #4a5568; font-size: 0.95rem; line-height: 1.7; margin: 0; flex: 1;">${tip}</p>

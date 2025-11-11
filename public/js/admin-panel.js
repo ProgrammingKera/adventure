@@ -267,26 +267,42 @@ function renderTrips(trips) {
 function renderBookings(bookings) {
     const tbody = document.getElementById('bookings-table-body');
     if (bookings.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No bookings found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center;">No bookings found</td></tr>';
         return;
     }
     
-    tbody.innerHTML = bookings.map(booking => `
-        <tr>
-            <td>${booking.userName || 'N/A'}</td>
-            <td>${booking.tripDescription || 'N/A'}</td>
-            <td>${booking.seatsBooked || 'N/A'}</td>
-            <td>PKR ${booking.totalPrice || 'N/A'}</td>
-            <td><span style="color: ${booking.status === 'confirmed' ? 'green' : 'orange'};">${booking.status || 'pending'}</span></td>
-            <td>${booking.createdAt ? new Date(booking.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}</td>
-            <td>
-                <div class="action-buttons">
-                    <button class="btn-small btn-view" onclick="viewBooking('${booking.id}')">View</button>
-                    <button class="btn-small btn-delete" onclick="deleteBooking('${booking.id}')">Delete</button>
-                </div>
-            </td>
-        </tr>
-    `).join('');
+    tbody.innerHTML = bookings.map(booking => {
+        // Payment status with color coding
+        const paymentStatus = booking.paymentStatus || 'pending';
+        const paymentColor = paymentStatus === 'succeeded' ? 'green' : paymentStatus === 'failed' ? 'red' : 'orange';
+        const paymentDisplay = paymentStatus.charAt(0).toUpperCase() + paymentStatus.slice(1);
+        
+        // Payment amount
+        const paymentAmount = booking.paymentAmount ? `PKR ${Number(booking.paymentAmount / 100).toLocaleString()}` : 'N/A';
+        
+        // Booking status
+        const bookingStatus = booking.status || 'pending';
+        const statusColor = bookingStatus === 'confirmed' ? 'green' : 'orange';
+        
+        return `
+            <tr>
+                <td>${booking.userName || 'N/A'}</td>
+                <td>${booking.tripDescription || 'N/A'}</td>
+                <td>${booking.seatsBooked || 'N/A'}</td>
+                <td>PKR ${booking.totalPrice || 'N/A'}</td>
+                <td><span style="padding: 0.25rem 0.5rem; border-radius: 4px; background: ${paymentColor}20; color: ${paymentColor}; font-weight: 600;">${paymentDisplay}</span></td>
+                <td><strong>${paymentAmount}</strong></td>
+                <td><span style="color: ${statusColor};">${bookingStatus}</span></td>
+                <td>${booking.createdAt ? new Date(booking.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}</td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="btn-small btn-view" onclick="viewBooking('${booking.id}')">View</button>
+                        <button class="btn-small btn-delete" onclick="deleteBooking('${booking.id}')">Delete</button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
 // Render Testimonials
@@ -567,6 +583,22 @@ function showAdminProfileModal(user) {
                 </div>
                 
                 <div style="margin-bottom: 1.5rem;">
+                    <h3 style="color: var(--primary-color); margin-bottom: 1rem;">Change Email</h3>
+                    <form id="change-email-form">
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">New Email</label>
+                            <input type="email" id="new-email" required style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px;">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Current Password (for verification)</label>
+                            <input type="password" id="email-password" required style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px;">
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">Update Email</button>
+                    </form>
+                    <div id="email-message" style="margin-top: 1rem; display: none;"></div>
+                </div>
+                
+                <div style="margin-bottom: 1.5rem; border-top: 1px solid #e9ecef; padding-top: 1.5rem;">
                     <h3 style="color: var(--primary-color); margin-bottom: 1rem;">Change Password</h3>
                     <form id="change-password-form">
                         <div class="form-group" style="margin-bottom: 1rem;">
@@ -599,11 +631,75 @@ function showAdminProfileModal(user) {
     
     document.body.insertAdjacentHTML('beforeend', modalHTML);
     
+    // Setup email change form
+    document.getElementById('change-email-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await changeAdminEmail();
+    });
+    
     // Setup password change form
     document.getElementById('change-password-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         await changeAdminPassword();
     });
+}
+
+// Change Admin Email
+async function changeAdminEmail() {
+    const newEmail = document.getElementById('new-email').value;
+    const emailPassword = document.getElementById('email-password').value;
+    const messageDiv = document.getElementById('email-message');
+    
+    // Validation
+    if (!newEmail || !emailPassword) {
+        messageDiv.style.display = 'block';
+        messageDiv.style.color = 'red';
+        messageDiv.textContent = 'Please fill in all fields!';
+        return;
+    }
+    
+    showLoading();
+    
+    try {
+        // Import required functions
+        const { EmailAuthProvider, reauthenticateWithCredential, updateEmail } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+        
+        const user = auth.currentUser;
+        
+        // Re-authenticate user
+        const credential = EmailAuthProvider.credential(user.email, emailPassword);
+        await reauthenticateWithCredential(user, credential);
+        
+        // Update email
+        await updateEmail(user, newEmail);
+        
+        messageDiv.style.display = 'block';
+        messageDiv.style.color = 'green';
+        messageDiv.textContent = 'Email updated successfully!';
+        
+        // Clear form
+        document.getElementById('change-email-form').reset();
+        
+        // Close modal after 2 seconds
+        setTimeout(() => {
+            document.getElementById('admin-profile-modal').remove();
+        }, 2000);
+        
+    } catch (error) {
+        console.error('Email change error:', error);
+        messageDiv.style.display = 'block';
+        messageDiv.style.color = 'red';
+        
+        if (error.code === 'auth/wrong-password') {
+            messageDiv.textContent = 'Current password is incorrect!';
+        } else if (error.code === 'auth/email-already-in-use') {
+            messageDiv.textContent = 'New email is already in use!';
+        } else {
+            messageDiv.textContent = 'Failed to update email. Please try again.';
+        }
+    }
+    
+    hideLoading();
 }
 
 // Change Admin Password
