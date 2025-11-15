@@ -1,54 +1,53 @@
 # AI Trip Planner - Full-Stack Web Application
 
-A complete travel planning web application with AI-powered trip planning, agency management, and booking features.
+A complete travel planning web application with AI-powered trip planning, agency management, and secure payment processing.
 
 ## 🚀 Features
 
-- **Home Screen**: Hero section with travel tips and featured trips
-- **Explore Destinations**: Browse trips by city with agency information
-- **AI Trip Planning**: Generate personalized trip plans using Gemini 2.5-Flash AI
-- **AI Image Prediction**: Upload images of tourist places to get location information
-- **User Authentication**: Sign up, login, and profile management
-- **Travel Agency Creation**: Any user can create their own travel agency
-- **Agency Dashboard**: Add trips, view bookings, and manage agency operations
-- **Trip Booking**: Book seats on available trips
+- **AI Trip Planning**: Generate personalized trip plans using Gemini AI
+- **Trip Booking**: Browse and book trips with seat selection
+- **Secure Payments**: Stripe integration for payment processing
+- **User Authentication**: Firebase-based sign up and login
+- **Travel Agency Management**: Create agencies and manage trips
+- **Admin Dashboard**: Monitor users, agencies, bookings, and payments
+- **Image Prediction**: Upload images to identify tourist locations
+- **Responsive Design**: Works on desktop, tablet, and mobile
 
 ## 🛠️ Tech Stack
 
 - **Frontend**: HTML, CSS, JavaScript (ES6 Modules)
 - **Backend**: Node.js with Express.js
 - **Database**: Firebase Firestore
-- **Authentication**: Firebase Authentication
-- **AI Model**: Google Gemini 2.5-Flash
-- **Image Prediction**: Custom ML API endpoint
+- **Authentication**: Firebase Auth
+- **Payments**: Stripe
+- **AI**: Google Gemini API, Groq API
 
 ## 📋 Prerequisites
 
-- Node.js (v14 or higher)
-- npm or yarn
-- Firebase project with Firestore and Authentication enabled
+- Node.js v14 or higher
+- npm v6 or higher
+- API Keys: Gemini, Groq, Firebase, Stripe
 
-## 🔧 Installation
+## 🔧 Quick Start
 
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd adventure
-```
-
-2. Install dependencies:
+1. Install dependencies:
 ```bash
 npm install
 ```
 
-3. Firebase configuration is already set up in `public/firebase.js`
+2. Create `.env` file with API keys:
+```
+GEMINI_API_KEY=your_key
+GROQ_API_KEY=your_key
+PORT=3000
+```
 
-4. Start the server:
+3. Start server:
 ```bash
 npm start
 ```
 
-The application will be available at `http://localhost:3000`
+4. Open `http://localhost:3000`
 
 ## 📁 Project Structure
 

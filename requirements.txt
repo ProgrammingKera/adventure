@@ -1,0 +1,36 @@
+# AI Trip Planner - Project Requirements
+# Install with: npm install
+
+## Backend Dependencies (Node.js)
+axios@^1.6.0
+cors@^2.8.5
+dotenv@^16.3.1
+express@^4.18.2
+form-data@^4.0.4
+multer@^1.4.5-lts.1
+
+## System Requirements
+Node.js: v14.0.0 or higher
+npm: v6.0.0 or higher
+
+## Environment Variables (.env file)
+
+GROQ_API_KEY=your_groq_api_key
+PORT=3000
+
+## Frontend Dependencies (CDN)
+Firebase: https://www.gstatic.com/firebasejs/10.7.1/
+Stripe: https://js.stripe.com/v3/
+Font Awesome: https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/
+
+## API Keys Required
+ 
+1. Groq API - 
+2. Firebase Project - 
+3. Stripe Account - 
+
+## Installation Steps
+1. npm install
+2. Create .env file with API keys
+3. npm start
+4. Open http://localhost:3000
