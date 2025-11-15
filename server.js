@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -47,53 +48,75 @@ app.post('/api/generate-plan', async (req, res) => {
 
     const datesList = dates.join(', ');
 
-    const prompt = `Generate trip plan JSON for ${destination}, ${startDate} to ${endDate} (${days} days), ${numberOfPeople} people.
-Budget: ${budget}, Accommodation: ${accommodationType}, Preferences: ${preferences.join(', ')}, Special: ${specialRequirements || 'None'}
+    const prompt = `Generate a detailed trip plan in JSON format for ${destination}. Trip details: ${days} days, ${numberOfPeople} people, Budget: ${budget}, Dates: ${datesList}.
 
-Return ONLY valid JSON (no markdown, no text):
+Return ONLY valid JSON with this exact structure:
 {
-  "specialRequirementsNote": "${specialRequirements && specialRequirements !== 'None' ? 'How special requirements addressed' : ''}",
-  "weather": [{"date":"YYYY-MM-DD","condition":"sunny/cloudy/rainy/partly-cloudy","temperature":"XX°C","description":"text"}] (${days} days: ${datesList}),
-  "touristAttractions": [{"name":"","description":"","location":""}] (5-6 items),
-  "restaurants": [{"name":"","cuisine":"","priceRange":"PKR X","rating":"4.5","description":""}] (5-6 items),
-  "packingEssentials": ["item1","item2"] (10-12 items),
-  "accommodations": [{"name":"","price":"PKR X/night","location":"","facilities":["f1","f2","f3"],"rating":"4.2","description":""}] (2-3 ${accommodationType}),
-  "localTransportation": {"options":[{"type":"","cost":"PKR X","description":""}]} (3-4 options),
-  "localEvents": [{"name":"","date":"","description":""}],
-  "tripCost": {"accommodation":"PKR X","food":"PKR X","transportation":"PKR X","attractions":"PKR X","miscellaneous":"PKR X","total":"PKR X"} (for ${numberOfPeople} people, ${days} days, ${budget}),
-  "safetyTips": ["tip1","tip2"] (6-8 tips)
-}
-
-Rules: Weather exact values only, ratings as numbers, 3 facilities per accommodation, address special requirements if provided.`;
+  "trip": {
+    "destination": "${destination}",
+    "duration": "${days} days",
+    "travelers": ${numberOfPeople},
+    "total_budget": ${budget.replace(/[^0-9]/g, '')}
+  },
+  "weather": [
+    {"date": "YYYY-MM-DD", "condition": "sunny/rainy/cloudy", "temperature": "25°C", "description": "weather details"}
+  ],
+  "attractions": [
+    {"name": "attraction name", "location": "location", "description": "details", "rating": 4.5}
+  ],
+  "restaurants": [
+    {"name": "restaurant name", "cuisine": "type", "description": "details", "rating": 4.0, "priceRange": "PKR 500-1000"}
+  ],
+  "packingEssentials": ["item1", "item2"],
+  "accommodation": [
+    {"name": "hotel name", "location": "location", "price": "PKR 2000", "rating": 4.5, "description": "details", "facilities": ["wifi", "ac"]}
+  ],
+  "transport": {
+    "options": [
+      {"type": "bus/train/taxi", "cost": "PKR 500", "description": "details"}
+    ]
+  },
+  "localEvents": [
+    {"name": "event name", "date": "YYYY-MM-DD", "description": "details"}
+  ],
+  "budget_breakdown": {
+    "accommodation": "PKR 5000",
+    "food": "PKR 3000",
+    "transportation": "PKR 2000",
+    "attractions": "PKR 1000",
+    "miscellaneous": "PKR 500",
+    "total": "PKR 11500"
+  },
+  "safetyTips": ["tip1", "tip2"],
+  "itinerary": [
+    {"day": "Day 1", "activities": "activity details"}
+  ]
+}`;
 
     const response = await axios.post(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=AIzaSyBy3SwEG8zDtwdrq-BcJnTCW19iuVjzxQ4',
+      'https://api.groq.com/openai/v1/chat/completions',
       {
-        contents: [{
-          parts: [{
-            text: prompt
-          }]
-        }],
-        generationConfig: {
-          temperature: 0.4,
-          topK: 20,
-          topP: 0.8,
-          maxOutputTokens: 8192,
-          responseMimeType: 'application/json'
-        }
+        model: "moonshotai/kimi-k2-instruct",
+        messages: [
+          { role: "system", content: "You are a helpful travel planner. Always respond in valid JSON only." },
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.4,
+        max_tokens: 8192
       },
       {
         headers: {
+          'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
           'Content-Type': 'application/json'
         }
       }
     );
 
-    if (!response.data || !response.data.candidates || !response.data.candidates[0]) {
+    if (!response.data || !response.data.choices || !response.data.choices[0]) {
       throw new Error('Invalid response from AI service');
     }
     
-    let rawResponse = response.data.candidates[0].content.parts[0].text;
+    let rawResponse = response.data.choices[0].message.content;
     
     if (!rawResponse || rawResponse.trim().length === 0) {
       throw new Error('Empty plan generated');
@@ -101,6 +124,8 @@ Rules: Weather exact values only, ratings as numbers, 3 facilities per accommoda
     
     // Save the raw response
     const rawResponseText = rawResponse.trim();
+    
+    
     
     // Extract JSON from response - handle various formats
     let generatedPlan = rawResponseText;
@@ -118,11 +143,46 @@ Rules: Weather exact values only, ratings as numbers, 3 facilities per accommoda
       }
     }
     
-    // Try to extract JSON object if there's text before/after
-    const jsonMatch = generatedPlan.match(/\{[\s\S]*\}/);
-    if (jsonMatch && jsonMatch[0].length < generatedPlan.length) {
-      generatedPlan = jsonMatch[0];
+    // Try multiple extraction strategies
+    const extractionStrategies = [
+      // Strategy 1: Direct JSON object
+      () => {
+        const jsonMatch = generatedPlan.match(/\{[\s\S]*\}/);
+        if (jsonMatch) return jsonMatch[0];
+        return null;
+      },
+      // Strategy 2: Clean and extract
+      () => {
+        const cleaned = generatedPlan.replace(/^[^{]*({.*})[^}]*$/s, '$1').trim();
+        if (cleaned.startsWith('{') && cleaned.endsWith('}')) return cleaned;
+        return null;
+      },
+      // Strategy 3: Find largest JSON object
+      () => {
+        const matches = generatedPlan.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g);
+        if (matches && matches.length > 0) {
+          return matches.sort((a, b) => b.length - a.length)[0];
+        }
+        return null;
+      }
+    ];
+    
+    let extractedJson = null;
+    for (const strategy of extractionStrategies) {
+      try {
+        extractedJson = strategy();
+        if (extractedJson) {
+          // Test if it's valid JSON
+          JSON.parse(extractedJson);
+          generatedPlan = extractedJson;
+          break;
+        }
+      } catch (e) {
+        continue;
+      }
     }
+    
+    
     
     // Try to parse as JSON with multiple strategies
     let planData;
@@ -131,6 +191,26 @@ Rules: Weather exact values only, ratings as numbers, 3 facilities per accommoda
     // Strategy 1: Direct parse
     try {
       planData = JSON.parse(generatedPlan);
+      
+      // Transform to frontend expected format
+      if (planData.trip) {
+        const transformedPlan = {
+          weather: planData.weather || [],
+          touristAttractions: planData.attractions || planData.touristAttractions || [],
+          restaurants: planData.restaurants || [],
+          packingEssentials: planData.packingEssentials || [],
+          accommodations: planData.accommodation || planData.accommodations || [],
+          localTransportation: planData.transport || planData.localTransportation || { options: [] },
+          localEvents: planData.localEvents || [],
+          tripCost: planData.budget_breakdown || planData.tripCost || {},
+          safetyTips: planData.safetyTips || [],
+          itinerary: planData.itinerary || [],
+          // Keep original data for reference
+          originalData: planData
+        };
+        planData = transformedPlan;
+      }
+      
       parseSuccess = true;
     } catch (parseError) {
       
@@ -182,10 +262,24 @@ Rules: Weather exact values only, ratings as numbers, 3 facilities per accommoda
       planData.rawResponse = rawResponseText;
     }
     
-    // Validate structure if parsing succeeded
-    if (parseSuccess && planData) {
-      // Structure validated
+    // If parsing failed, create a basic structure with raw response
+    if (!parseSuccess || !planData) {
+      planData = {
+        weather: [],
+        touristAttractions: [],
+        restaurants: [],
+        packingEssentials: [],
+        accommodations: [],
+        localTransportation: { options: [] },
+        localEvents: [],
+        tripCost: {},
+        safetyTips: [],
+        rawResponse: rawResponseText,
+        needsFrontendParsing: true
+      };
     }
+    
+    console.log('Final plan data keys:', Object.keys(planData));
     
     res.json({ 
       success: true, 

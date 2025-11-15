@@ -1,3 +1,6 @@
+// Test that file loads
+console.log('plan-trip.js loaded successfully!');
+
 import { db, auth } from '../firebase.js';
 import { collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
@@ -91,8 +94,9 @@ if (tripPlanForm) {
             let finalPlan = null;
             
             // Strategy 1: Check if plan already has structured data
-            if (data.plan.weather && data.plan.touristAttractions && !data.plan.error) {
+            if (data.plan && Object.keys(data.plan).length > 0 && !data.plan.error) {
                 console.log('✓ Using structured plan data from backend');
+                console.log('Available sections:', Object.keys(data.plan));
                 finalPlan = data.plan;
             }
             // Strategy 2: Try to parse rawResponse if available
@@ -174,6 +178,37 @@ if (tripPlanForm) {
                 // Try to extract any valid sections from raw response
                 if (data.plan.rawResponse) {
                     const rawText = data.plan.rawResponse;
+                    
+                    // Helper function to extract JSON sections
+                    function extractSection(text, sectionName) {
+                        try {
+                            // Try multiple patterns for the section
+                            const patterns = [
+                                new RegExp(`"${sectionName}"\s*:\s*(\[[^\]]*\])`, 'gs'), // Array pattern
+                                new RegExp(`"${sectionName}"\s*:\s*(\{[^}]*\})`, 'gs'), // Object pattern
+                                new RegExp(`'${sectionName}'\s*:\s*(\[[^\]]*\])`, 'gs'), // Single quotes array
+                                new RegExp(`'${sectionName}'\s*:\s*(\{[^}]*\})`, 'gs') // Single quotes object
+                            ];
+                            
+                            for (const pattern of patterns) {
+                                const match = pattern.exec(text);
+                                if (match) {
+                                    try {
+                                        return JSON.parse(match[1]);
+                                    } catch (parseError) {
+                                        // Try to fix common JSON issues
+                                        let fixed = match[1].replace(/,\s*([\]}])/g, '$1'); // Remove trailing commas
+                                        return JSON.parse(fixed);
+                                    }
+                                }
+                            }
+                            return null;
+                        } catch (e) {
+                            console.warn(`Failed to extract ${sectionName}:`, e);
+                            return null;
+                        }
+                    }
+                    
                     finalPlan = {
                         weather: extractSection(rawText, 'weather') || [],
                         touristAttractions: extractSection(rawText, 'touristAttractions') || [],
@@ -223,11 +258,41 @@ if (tripPlanForm) {
             // Scroll to plan result
             planResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         } else {
-            planResult.innerHTML = `
-                <div class="alert alert-error">
-                    ${data.error || 'Failed to generate plan. Please try again.'}
-                </div>
-            `;
+            // Even if there's an error, try to show raw response if available
+            if (data.plan && data.plan.rawResponse) {
+                console.log('Showing raw response as fallback');
+                const rawPlan = {
+                    weather: [],
+                    touristAttractions: [],
+                    restaurants: [],
+                    packingEssentials: [],
+                    accommodations: [],
+                    localTransportation: { options: [] },
+                    localEvents: [],
+                    tripCost: {},
+                    safetyTips: [],
+                    rawResponse: data.plan.rawResponse
+                };
+                
+                // Store plan data globally
+                window.currentPlanData = rawPlan;
+                window.currentFormData = formData;
+                
+                // Display the plan
+                const formattedPlan = formatStructuredPlan(rawPlan, formData);
+                planResult.innerHTML = `
+                    <div class="alert alert-warning">
+                        <strong>AI Response Format Issue:</strong> The AI returned data in an unexpected format, but here's what we could extract:
+                    </div>
+                    ${formattedPlan}
+                `;
+            } else {
+                planResult.innerHTML = `
+                    <div class="alert alert-error">
+                        ${data.error || 'Failed to generate plan. Please try again.'}
+                    </div>
+                `;
+            }
         }
     } catch (error) {
         console.error('Error generating plan:', error);
@@ -245,6 +310,8 @@ if (tripPlanForm) {
 
 // Format structured JSON plan with modern, beautiful design
 export function formatStructuredPlan(plan, formData) {
+    console.log('formatStructuredPlan called with plan:', plan);
+    console.log('formData:', formData);
     let html = `
         <style>
             @keyframes fadeInUp {
@@ -569,10 +636,72 @@ export function formatStructuredPlan(plan, formData) {
                     </div>
                 </div>
             </div>
+            
+            <!-- AI Trip Details Section -->
+            ${plan.trip ? `
+            <div class="plan-section">
+                <div class="modern-card">
+                    <div style="padding: 2rem;">
+                        <h2 class="section-title" style="margin-bottom: 1.5rem;">
+                            🗺️ Trip Details
+                        </h2>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
+                            ${plan.trip.destination ? `
+                            <div style="background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%); padding: 1.5rem; border-radius: 12px; border: 1px solid #e8eaf6;">
+                                <div style="font-weight: 600; color: #333; margin-bottom: 0.5rem;">📍 Destination</div>
+                                <div style="color: var(--primary-color); font-size: 1.1rem;">${plan.trip.destination}</div>
+                            </div>
+                            ` : ''}
+                            ${plan.trip.duration ? `
+                            <div style="background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%); padding: 1.5rem; border-radius: 12px; border: 1px solid #e8eaf6;">
+                                <div style="font-weight: 600; color: #333; margin-bottom: 0.5rem;">📅 Duration</div>
+                                <div style="color: var(--primary-color); font-size: 1.1rem;">${plan.trip.duration}</div>
+                            </div>
+                            ` : ''}
+                            ${plan.trip.travelers ? `
+                            <div style="background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%); padding: 1.5rem; border-radius: 12px; border: 1px solid #e8eaf6;">
+                                <div style="font-weight: 600; color: #333; margin-bottom: 0.5rem;">👥 Travelers</div>
+                                <div style="color: var(--primary-color); font-size: 1.1rem;">${plan.trip.travelers} people</div>
+                            </div>
+                            ` : ''}
+                            ${plan.trip.total_budget ? `
+                            <div style="background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%); padding: 1.5rem; border-radius: 12px; border: 1px solid #e8eaf6;">
+                                <div style="font-weight: 600; color: #333; margin-bottom: 0.5rem;">💰 Budget</div>
+                                <div style="color: var(--primary-color); font-size: 1.1rem;">${plan.trip.currency || 'PKR'} ${plan.trip.total_budget.toLocaleString()}</div>
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            ` : ''}
         `;
     }
-
-    // 9. Safety Tips Section
+    
+    // 9. Itinerary Section
+    if (plan.itinerary && plan.itinerary.length > 0) {
+        html += `
+            <div class="plan-section" style="margin-bottom: 3rem;">
+                <h2 class="section-title" style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+                    <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); display: flex; align-items: center; justify-content: center;">
+                        <span style="font-size: 1.5rem;">📅</span>
+                    </div>
+                    Daily Itinerary
+                </h2>
+                <div style="display: grid; gap: 1.5rem;">
+        `;
+        plan.itinerary.forEach((day, index) => {
+            html += `
+                <div class="modern-card" style="padding: 1.75rem;">
+                    <h3 style="color: #2d3748; margin: 0 0 1rem 0; font-size: 1.2rem; font-weight: 700;">Day ${index + 1}: ${day.day || 'Day ' + (index + 1)}</h3>
+                    <div style="color: #4a5568; line-height: 1.7; white-space: pre-line;">${day.activities || day.description || ''}</div>
+                </div>
+            `;
+        });
+        html += `</div></div>`;
+    }
+    
+    // 10. Safety Tips Section
     if (plan.safetyTips && plan.safetyTips.length > 0) {
         html += `
             <div class="plan-section" style="margin-bottom: 3rem;">
@@ -596,9 +725,9 @@ export function formatStructuredPlan(plan, formData) {
     }
 
     html += `
-            <div style="text-align: center; margin-top: 3rem;">
-                <button class="btn btn-primary" onclick="savePlan()" style="padding: 1rem 3rem; font-size: 1.1rem; font-weight: 700; border-radius: 50px; box-shadow: 0 8px 24px rgba(0,103,52,0.3); transition: all 0.3s ease;">
-                    Save Plan
+            <div style="text-align: center; margin-top: 3rem; padding-top: 2rem; border-top: 2px solid #e8eaf6;">
+                <button class="btn btn-primary" onclick="savePlan()" style="padding: 1rem 3rem; font-size: 1rem; font-weight: 700; border-radius: 10px; background: linear-gradient(135deg, var(--primary-color) 0%, #2d8659 100%); color: white; border: none; cursor: pointer; box-shadow: 0 8px 24px rgba(0,103,52,0.3); transition: all 0.3s ease;">
+                    Save Trip Plan
                 </button>
             </div>
         </div>
