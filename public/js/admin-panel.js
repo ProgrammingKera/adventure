@@ -141,29 +141,51 @@ async function loadBookings() {
         const bookingsRef = collection(db, 'bookings');
         const q = query(bookingsRef, orderBy('createdAt', 'desc'));
         const snapshot = await getDocs(q);
-        allBookings = [];
+        allBookings = snapshot.docs.map(docSnap => ({
+            id: docSnap.id,
+            ...docSnap.data(),
+            userName: 'Unknown',
+            tripDescription: 'Unknown'
+        }));
         
-        for (const docSnap of snapshot.docs) {
-            const bookingData = { id: docSnap.id, ...docSnap.data() };
-            
-            // Get user name
-            if (bookingData.userId) {
-                const userDoc = await getDoc(doc(db, 'users', bookingData.userId));
+        // Batch load user names
+        const userIds = [...new Set(allBookings.map(b => b.userId).filter(Boolean))];
+        const userMap = {};
+        if (userIds.length > 0) {
+            const userDocs = await Promise.all(
+                userIds.map(id => getDoc(doc(db, 'users', id)))
+            );
+            userDocs.forEach(userDoc => {
                 if (userDoc.exists()) {
-                    bookingData.userName = userDoc.data().name || 'Unknown';
+                    userMap[userDoc.id] = userDoc.data().name || 'Unknown';
                 }
-            }
-            
-            // Get trip description
-            if (bookingData.tripId) {
-                const tripDoc = await getDoc(doc(db, 'trips', bookingData.tripId));
-                if (tripDoc.exists()) {
-                    bookingData.tripDescription = tripDoc.data().description || 'Unknown';
-                }
-            }
-            
-            allBookings.push(bookingData);
+            });
         }
+        
+        // Batch load trip descriptions
+        const tripIds = [...new Set(allBookings.map(b => b.tripId).filter(Boolean))];
+        const tripMap = {};
+        if (tripIds.length > 0) {
+            const tripDocs = await Promise.all(
+                tripIds.map(id => getDoc(doc(db, 'trips', id)))
+            );
+            tripDocs.forEach(tripDoc => {
+                if (tripDoc.exists()) {
+                    tripMap[tripDoc.id] = tripDoc.data().description || 'Unknown';
+                }
+            });
+        }
+        
+        // Assign loaded data
+        allBookings.forEach(booking => {
+            if (booking.userId && userMap[booking.userId]) {
+                booking.userName = userMap[booking.userId];
+            }
+            if (booking.tripId && tripMap[booking.tripId]) {
+                booking.tripDescription = tripMap[booking.tripId];
+            }
+        });
+        
         renderBookings(allBookings);
     } catch (error) {
         console.error('Error loading bookings:', error);
@@ -274,25 +296,38 @@ function renderBookings(bookings) {
     tbody.innerHTML = bookings.map(booking => {
         // Payment status with color coding
         const paymentStatus = booking.paymentStatus || 'pending';
-        const paymentColor = paymentStatus === 'succeeded' ? 'green' : paymentStatus === 'failed' ? 'red' : 'orange';
-        const paymentDisplay = paymentStatus.charAt(0).toUpperCase() + paymentStatus.slice(1);
+        let paymentColor, paymentDisplay;
         
-        // Payment amount
-        const paymentAmount = booking.paymentAmount ? `PKR ${Number(booking.paymentAmount / 100).toLocaleString()}` : 'N/A';
+        if (paymentStatus === 'completed' || paymentStatus === 'succeeded') {
+            paymentColor = '#22c55e'; // Green
+            paymentDisplay = ' Complete';
+        } else if (paymentStatus === 'failed') {
+            paymentColor = '#ef4444'; // Red
+            paymentDisplay = ' Failed';
+        } else {
+            paymentColor = '#f59e0b'; // Orange
+            paymentDisplay = ' Pending';
+        }
+        
+        // Payment amount - use totalAmount from booking (this is what's actually saved)
+        const paymentAmount = booking.totalAmount ? `PKR ${Number(booking.totalAmount).toLocaleString()}` : 'N/A';
+        
+        // Total price - use totalAmount or calculate from seatsBooked
+        const totalPrice = booking.totalAmount || (booking.seatsBooked && booking.pricePerSeat ? booking.seatsBooked * booking.pricePerSeat : 'N/A');
         
         // Booking status
-        const bookingStatus = booking.status || 'pending';
-        const statusColor = bookingStatus === 'confirmed' ? 'green' : 'orange';
+        const bookingStatus = booking.status || 'confirmed';
+        const statusColor = bookingStatus === 'confirmed' ? '#22c55e' : '#f59e0b';
         
         return `
             <tr>
                 <td>${booking.userName || 'N/A'}</td>
                 <td>${booking.tripDescription || 'N/A'}</td>
                 <td>${booking.seatsBooked || 'N/A'}</td>
-                <td>PKR ${booking.totalPrice || 'N/A'}</td>
-                <td><span style="padding: 0.25rem 0.5rem; border-radius: 4px; background: ${paymentColor}20; color: ${paymentColor}; font-weight: 600;">${paymentDisplay}</span></td>
+                <td>PKR ${typeof totalPrice === 'number' ? totalPrice.toLocaleString() : totalPrice}</td>
+                <td><span style="padding: 0.5rem 0.75rem; border-radius: 6px; background: ${paymentColor}20; color: ${paymentColor}; font-weight: 700; display: inline-block; min-width: 120px; text-align: center;">${paymentDisplay}</span></td>
                 <td><strong>${paymentAmount}</strong></td>
-                <td><span style="color: ${statusColor};">${bookingStatus}</span></td>
+                <td><span style="color: ${statusColor}; font-weight: 600;">${bookingStatus.toUpperCase()}</span></td>
                 <td>${booking.createdAt ? new Date(booking.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}</td>
                 <td>
                     <div class="action-buttons">

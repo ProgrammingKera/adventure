@@ -49,13 +49,65 @@ async function loadTripSummary() {
         seatsInput.value = Math.min(availableSeats, 1);
         totalCostEl.textContent = formatCurrency((tripData.pricePerSeat || 0) * Number(seatsInput.value));
 
+        // Format date properly
+        let dateDisplay = 'N/A';
+        if (tripData.date) {
+            try {
+                if (typeof tripData.date === 'string') {
+                    // Try to parse string date
+                    const parsed = new Date(tripData.date);
+                    if (!isNaN(parsed.getTime())) {
+                        dateDisplay = parsed.toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' });
+                    } else {
+                        dateDisplay = tripData.date;
+                    }
+                } else if (tripData.date.toDate) {
+                    // Firestore Timestamp
+                    dateDisplay = tripData.date.toDate().toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' });
+                } else {
+                    // Regular Date object
+                    const d = new Date(tripData.date);
+                    if (!isNaN(d.getTime())) {
+                        dateDisplay = d.toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' });
+                    }
+                }
+            } catch (err) {
+                console.error('Date parsing error:', err);
+                dateDisplay = tripData.date.toString();
+            }
+        }
+        
         summary.innerHTML = `
-            <p><strong>Title:</strong> ${tripData.description || 'Trip'}</p>
-            <p><strong>Destination:</strong> ${tripData.location || 'N/A'}</p>
-            <p><strong>Departure:</strong> ${tripData.departure || 'N/A'}</p>
-            <p><strong>Date:</strong> ${tripData.date ? (typeof tripData.date === 'string' ? tripData.date : new Date(tripData.date).toLocaleDateString()) : 'N/A'}</p>
-            <p><strong>Price per seat:</strong> ${formatCurrency(tripData.pricePerSeat || 0)}</p>
-            <p><strong>Available seats:</strong> ${availableSeats}</p>
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.25rem;">
+                    <div style="padding: 1.25rem; background: linear-gradient(135deg, #f8fdf9 0%, #eef5f0 100%); border-radius: 12px; border-left: 5px solid var(--primary-color); box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                        <div style="font-size: 0.75rem; color: var(--text-light); margin-bottom: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;"><i class="fa-solid fa-info-circle" style="margin-right: 0.5rem;"></i>Trip Title</div>
+                        <div style="font-weight: 700; color: var(--text-dark); font-size: 1.05rem;">${tripData.description || 'Trip'}</div>
+                    </div>
+                    <div style="padding: 1.25rem; background: linear-gradient(135deg, #fff8f0 0%, #ffe8d6 100%); border-radius: 12px; border-left: 5px solid #FF9800; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                        <div style="font-size: 0.75rem; color: var(--text-light); margin-bottom: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;"><i class="fa-solid fa-map-pin" style="margin-right: 0.5rem;"></i>Destination</div>
+                        <div style="font-weight: 700; color: var(--text-dark); font-size: 1.05rem;">${tripData.location || 'N/A'}</div>
+                    </div>
+                    <div style="padding: 1.25rem; background: linear-gradient(135deg, #f0f7ff 0%, #e0f0ff 100%); border-radius: 12px; border-left: 5px solid #2196F3; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                        <div style="font-size: 0.75rem; color: var(--text-light); margin-bottom: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;"><i class="fa-solid fa-plane-departure" style="margin-right: 0.5rem;"></i>Departure</div>
+                        <div style="font-weight: 700; color: var(--text-dark); font-size: 1.05rem;">${tripData.departure || 'N/A'}</div>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.25rem;">
+                    <div style="padding: 1.25rem; background: linear-gradient(135deg, #f0fff4 0%, #e0ffe8 100%); border-radius: 12px; border-left: 5px solid #4CAF50; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                        <div style="font-size: 0.75rem; color: var(--text-light); margin-bottom: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;"><i class="fa-solid fa-calendar" style="margin-right: 0.5rem;"></i>Date</div>
+                        <div style="font-weight: 700; color: var(--text-dark); font-size: 1.05rem;">${dateDisplay}</div>
+                    </div>
+                    <div style="padding: 1.25rem; background: linear-gradient(135deg, #f3e5f5 0%, #e8d5f0 100%); border-radius: 12px; border-left: 5px solid #9C27B0; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                        <div style="font-size: 0.75rem; color: var(--text-light); margin-bottom: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;"><i class="fa-solid fa-money-bill" style="margin-right: 0.5rem;"></i>Price/Seat</div>
+                        <div style="font-weight: 700; color: var(--primary-color); font-size: 1.1rem;">${formatCurrency(tripData.pricePerSeat || 0)}</div>
+                    </div>
+                    <div style="padding: 1.25rem; background: linear-gradient(135deg, #e0f7fa 0%, #d0f5f8 100%); border-radius: 12px; border-left: 5px solid #00BCD4; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                        <div style="font-size: 0.75rem; color: var(--text-light); margin-bottom: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;"><i class="fa-solid fa-chair" style="margin-right: 0.5rem;"></i>Available</div>
+                        <div style="font-weight: 700; color: var(--text-dark); font-size: 1.1rem;">${availableSeats} seats</div>
+                    </div>
+                </div>
+            </div>
         `;
 
         seatsInput.addEventListener('input', () => {

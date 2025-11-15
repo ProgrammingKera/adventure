@@ -17,6 +17,39 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
+// Budget preset buttons
+const budgetPresets = document.querySelectorAll('.budget-preset');
+const budgetInput = document.getElementById('budget');
+
+if (budgetPresets.length > 0 && budgetInput) {
+    budgetPresets.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const value = btn.getAttribute('data-value');
+            budgetInput.value = value;
+            
+            // Update button styling
+            budgetPresets.forEach(b => {
+                b.style.background = 'white';
+                b.style.borderColor = '#e0e0e0';
+                b.style.color = 'var(--primary-color)';
+            });
+            btn.style.background = 'var(--primary-color)';
+            btn.style.borderColor = 'var(--primary-color)';
+            btn.style.color = 'white';
+        });
+    });
+    
+    // Clear button styling when user types
+    budgetInput.addEventListener('input', () => {
+        budgetPresets.forEach(b => {
+            b.style.background = 'white';
+            b.style.borderColor = '#e0e0e0';
+            b.style.color = 'var(--primary-color)';
+        });
+    });
+}
+
 // Set minimum date to today (only if elements exist)
 const today = new Date().toISOString().split('T')[0];
 const startDateEl = document.getElementById('startDate');

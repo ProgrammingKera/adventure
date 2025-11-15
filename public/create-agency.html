@@ -35,35 +35,39 @@
                 Start offering amazing trips to travelers
             </p>
 
-            <div class="form-container">
+            <div class="form-container" style="max-width: 700px;">
                 <form id="create-agency-form">
-                    <div class="form-group">
-                        <label for="agency-name">Agency Name *</label>
-                        <input type="text" id="agency-name" required placeholder="e.g., Adventure Tours Pakistan">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="agency-name"><i class="fa-solid fa-building" style="margin-right: 0.5rem; color: var(--primary-color);"></i>Agency Name *</label>
+                            <input type="text" id="agency-name" required placeholder="e.g., Adventure Tours">
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="agency-location"><i class="fa-solid fa-map-pin" style="margin-right: 0.5rem; color: var(--primary-color);"></i>City *</label>
+                            <input type="text" id="agency-location" required placeholder="e.g., Islamabad">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="agency-email"><i class="fa-solid fa-envelope" style="margin-right: 0.5rem; color: var(--primary-color);"></i>Email *</label>
+                            <input type="email" id="agency-email" required placeholder="contact@agency.com">
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="agency-phone"><i class="fa-solid fa-phone" style="margin-right: 0.5rem; color: var(--primary-color);"></i>Phone *</label>
+                            <input type="tel" id="agency-phone" required placeholder="03001234567">
+                        </div>
                     </div>
 
                     <div class="form-group">
-                        <label for="agency-location">City *</label>
-                        <input type="text" id="agency-location" required placeholder="e.g., Islamabad">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="agency-email">Email *</label>
-                        <input type="email" id="agency-email" required placeholder="contact@yourgency.com">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="agency-phone">Phone Number *</label>
-                        <input type="tel" id="agency-phone" required placeholder="e.g., 03001234567">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="agency-description">Description / Bio *</label>
+                        <label for="agency-description"><i class="fa-solid fa-pen-to-square" style="margin-right: 0.5rem; color: var(--primary-color);"></i>Description / Bio *</label>
                         <textarea id="agency-description" rows="5" required 
-                                  placeholder="Tell travelers about your agency, services, and experience..."></textarea>
+                                  placeholder="Tell travelers about your agency, services, experience, and what makes you special..."></textarea>
                     </div>
 
-                    <button type="submit" class="btn btn-primary" style="width: 100%;">Create Agency</button>
+                    <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.85rem; font-size: 1.05rem; font-weight: 700;"><i class="fa-solid fa-check" style="margin-right: 0.5rem;"></i>Create Agency</button>
                 </form>
                 <div id="agency-error" class="alert alert-error hidden" style="margin-top: 1rem;"></div>
                 <div id="agency-success" class="alert alert-success hidden" style="margin-top: 1rem;"></div>

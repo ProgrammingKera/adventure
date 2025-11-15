@@ -441,10 +441,18 @@ footer { background: #0f1a14; color: #cfe1d7; margin-top: 3rem; }
 .form-group textarea {
   width: 100%;
   padding: 0.75rem;
-  border: 2px solid #ddd;
-  border-radius: 5px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
   font-size: 1rem;
-  transition: border-color 0.3s;
+  transition: all 0.3s ease;
+  background: #ffffff;
+  font-family: inherit;
+}
+
+.form-group input:hover,
+.form-group select:hover,
+.form-group textarea:hover {
+  border-color: #d0d0d0;
 }
 
 .form-group input:focus,
@@ -452,6 +460,17 @@ footer { background: #0f1a14; color: #cfe1d7; margin-top: 3rem; }
 .form-group textarea:focus {
   outline: none;
   border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(0, 103, 52, 0.1);
+  background: #f8fdf9;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+  color: var(--primary-color);
+  font-size: 0.95rem;
+  letter-spacing: 0.3px;
 }
 
 .form-group textarea {

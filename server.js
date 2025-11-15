@@ -279,7 +279,7 @@ Return ONLY valid JSON with this exact structure:
       };
     }
     
-    console.log('Final plan data keys:', Object.keys(planData));
+    
     
     res.json({ 
       success: true, 
