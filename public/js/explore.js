@@ -254,8 +254,7 @@ function showAgenciesForCity(city) {
     
     agenciesContainer.innerHTML = agenciesWithCount.map(agency => `
         <div class="city-card" data-agency-id="${agency.id}">
-            <div class="city-name">${agency.name.replace(/[\u{1F600}-\u{1F64F}]/gu, '') || 'Agency'}</div>
-            ${agency.description ? `<div class="city-meta" style="font-size: 0.85rem; margin: 0.5rem 0; color: var(--text-light);">${agency.description.substring(0, 100)}${agency.description.length > 100 ? '...' : ''}</div>` : ''}
+            ${agency.description ? `<div class="city-meta" style="font-size: 0.85rem; margin: 0 0 0.5rem 0; color: var(--text-light);">${agency.description.substring(0, 100)}${agency.description.length > 100 ? '...' : ''}</div>` : ''}
             <div class="city-meta" style="display: flex; justify-content: space-between; align-items: center;">
                 <span>${agency.tripCount} ${agency.tripCount === 1 ? 'trip' : 'trips'}</span>
                 ${agency.rating ? `<span style="color: #FFA500;">★ ${Number(agency.rating).toFixed(1)}</span>` : ''}
@@ -293,7 +292,7 @@ function showTripsForAgency(city, agency) {
     const trips = allTrips.filter(t => t.agencyId === agency.id);
     
     // Update content
-    document.getElementById('content-title').textContent = `${agency.name || 'Agency'} Trips`;
+    document.getElementById('content-title').textContent = '';
     
     // Show agency info
     showAgencyInfo(agency);
@@ -472,49 +471,52 @@ function showAgencyInfo(agency) {
     
     agencyInfoSection.style.display = 'block';
     agencyInfoSection.innerHTML = `
-        <div style="text-align: center; padding: 1rem 0 1.25rem; border-bottom: 1px solid #e9ecef;">
-            <h2 style="margin: 0 0 0.5rem 0; color: var(--text-dark); font-size: 1.75rem; font-weight: 700;">${agency.name || 'Agency'}</h2>
-            
-            <div style="display: flex; align-items: center; justify-content: center; gap: 1.25rem; margin-bottom: 0.75rem; flex-wrap: wrap;">
-                ${agency.rating ? `
-                    <div style="display: flex; align-items: center; gap: 0.35rem; color: #FFA500; font-size: 1rem; font-weight: 600;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                        </svg>
-                        <span>${Number(agency.rating).toFixed(1)}</span>
-                    </div>
-                ` : ''}
-                ${agency.location ? `
-                    <div style="display: flex; align-items: center; gap: 0.35rem; color: var(--text-light); font-size: 0.95rem;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                            <circle cx="12" cy="10" r="3"></circle>
-                        </svg>
-                        <span>${agency.location}</span>
-                    </div>
-                ` : ''}
-            </div>
-            
-            ${agency.description ? `<p style="color: var(--text-light); line-height: 1.6; margin: 0.5rem auto 0.75rem; max-width: 650px; font-size: 0.95rem;">${agency.description}</p>` : ''}
-            
-            <div style="display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap; margin-top: 0.75rem;">
-                ${agency.phone ? `
-                    <a href="tel:${agency.phone}" style="display: flex; align-items: center; gap: 0.4rem; color: var(--primary-color); text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-                        </svg>
-                        <span>${agency.phone}</span>
-                    </a>
-                ` : ''}
-                ${agency.email ? `
-                    <a href="mailto:${agency.email}" style="display: flex; align-items: center; gap: 0.4rem; color: var(--primary-color); text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                            <polyline points="22,6 12,13 2,6"></polyline>
-                        </svg>
-                        <span>${agency.email}</span>
-                    </a>
-                ` : ''}
+        <div style="background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%); border: 1px solid #e8eaf6; border-radius: 16px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 20px rgba(0,0,0,0.08); transition: all 0.3s ease;">
+            <div style="text-align: center;">
+                <h2 style="margin: 0 0 1.5rem 0; color: #1a202c; font-size: 2rem; font-weight: 800;">${agency.name || 'Agency'}</h2>
+                
+                <div style="display: flex; align-items: center; justify-content: center; gap: 2rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+                    ${agency.rating ? `
+                        <div style="display: flex; align-items: center; gap: 0.5rem; background: linear-gradient(135deg, #fff5e6 0%, #ffe6cc 100%); padding: 0.75rem 1.25rem; border-radius: 12px; border: 1px solid #ffd699;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="#FFA500">
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                            </svg>
+                            <span style="font-weight: 700; color: #FF8C00; font-size: 1.1rem;">${Number(agency.rating).toFixed(1)}</span>
+                            <span style="color: #666; font-size: 0.9rem;">(Rating)</span>
+                        </div>
+                    ` : ''}
+                    ${agency.location ? `
+                        <div style="display: flex; align-items: center; gap: 0.5rem; background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); padding: 0.75rem 1.25rem; border-radius: 12px; border: 1px solid #a5d6a7;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2d6a4f" stroke-width="2.5">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                <circle cx="12" cy="10" r="3"></circle>
+                            </svg>
+                            <span style="font-weight: 600; color: #2d6a4f; font-size: 0.95rem;">${agency.location}</span>
+                        </div>
+                    ` : ''}
+                </div>
+                
+                ${agency.description ? `<p style="color: #4a5568; line-height: 1.8; margin: 1rem auto 1.5rem; max-width: 700px; font-size: 0.95rem; font-weight: 500;">${agency.description}</p>` : ''}
+                
+                <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px solid #e8eaf6;">
+                    ${agency.phone ? `
+                        <a href="tel:${agency.phone}" style="display: inline-flex; align-items: center; gap: 0.5rem; background: linear-gradient(135deg, var(--primary-color) 0%, #2d8659 100%); color: white; padding: 0.75rem 1.5rem; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: all 0.3s; box-shadow: 0 4px 12px rgba(0,103,52,0.2);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(0,103,52,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,103,52,0.2)'">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                            </svg>
+                            <span>${agency.phone}</span>
+                        </a>
+                    ` : ''}
+                    ${agency.email ? `
+                        <a href="mailto:${agency.email}" style="display: inline-flex; align-items: center; gap: 0.5rem; background: linear-gradient(135deg, var(--primary-color) 0%, #2d8659 100%); color: white; padding: 0.75rem 1.5rem; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: all 0.3s; box-shadow: 0 4px 12px rgba(0,103,52,0.2);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(0,103,52,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,103,52,0.2)'">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                <polyline points="22,6 12,13 2,6"></polyline>
+                            </svg>
+                            <span>${agency.email}</span>
+                        </a>
+                    ` : ''}
+                </div>
             </div>
         </div>
     `;
@@ -531,27 +533,27 @@ window.showAgencyDetailsInExplore = async function(agencyId) {
         }
         
         // Create modal HTML
-        const modalHTML = `
-            <div id="agency-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000;" onclick="if(event.target.id==='agency-modal') this.remove();">
-                <div style="background: white; padding: 2rem; border-radius: 8px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;" onclick="event.stopPropagation();">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                        <h2 style="margin: 0; color: var(--text-dark);">${agency.name || 'Agency'}</h2>
-                        <button onclick="document.getElementById('agency-modal').remove()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-light);">&times;</button>
-                    </div>
-                    ${agency.rating ? `<div style="color: #FFA500; margin-bottom: 1rem; font-size: 1.2rem;">★ ${Number(agency.rating).toFixed(1)} Rating</div>` : ''}
-                    ${agency.description ? `<div style="margin-bottom: 1rem; color: var(--text-light); line-height: 1.6;">${agency.description}</div>` : ''}
-                    <div style="margin-top: 1.5rem;">
-                        <strong style="color: var(--text-dark);">Contact Information:</strong>
-                        ${agency.phone ? `<div style="margin-top: 0.5rem; color: var(--text-light);">📞 ${agency.phone}</div>` : ''}
-                        ${agency.email ? `<div style="margin-top: 0.5rem; color: var(--text-light);">📧 ${agency.email}</div>` : ''}
-                        ${agency.location ? `<div style="margin-top: 0.5rem; color: var(--text-light);">📍 ${agency.location}</div>` : ''}
-                    </div>
-                    <div style="margin-top: 1.5rem; text-align: center;">
-                        <button onclick="document.getElementById('agency-modal').remove()" class="btn btn-primary">Close</button>
-                    </div>
-                </div>
-            </div>
-        `;
+        // const modalHTML = `
+        //     <div id="agency-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000;" onclick="if(event.target.id==='agency-modal') this.remove();">
+        //         <div style="background: white; padding: 2rem; border-radius: 8px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;" onclick="event.stopPropagation();">
+        //             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        //                 <h2 style="margin: 0; color: var(--text-dark);">${agency.name || 'Agency'}</h2>
+        //                 <button onclick="document.getElementById('agency-modal').remove()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-light);">&times;</button>
+        //             </div>
+        //             ${agency.rating ? `<div style="color: #FFA500; margin-bottom: 1rem; font-size: 1.2rem;">★ ${Number(agency.rating).toFixed(1)} Rating</div>` : ''}
+        //             ${agency.description ? `<div style="margin-bottom: 1rem; color: var(--text-light); line-height: 1.6;">${agency.description}</div>` : ''}
+        //             <div style="margin-top: 1.5rem;">
+        //                 <strong style="color: var(--text-dark);">Contact Information:</strong>
+        //                 ${agency.phone ? `<div style="margin-top: 0.5rem; color: var(--text-light);">📞 ${agency.phone}</div>` : ''}
+        //                 ${agency.email ? `<div style="margin-top: 0.5rem; color: var(--text-light);">📧 ${agency.email}</div>` : ''}
+        //                 ${agency.location ? `<div style="margin-top: 0.5rem; color: var(--text-light);">📍 ${agency.location}</div>` : ''}
+        //             </div>
+        //             <div style="margin-top: 1.5rem; text-align: center;">
+        //                 <button onclick="document.getElementById('agency-modal').remove()" class="btn btn-primary">Close</button>
+        //             </div>
+        //         </div>
+        //     </div>
+        // `;
         
         // Remove existing modal if any
         const existingModal = document.getElementById('agency-modal');

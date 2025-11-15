@@ -1,11 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - AI Trip Planner</title>
+    <link rel="icon" href="/assets/man.png">
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
+
 <body>
     <div class="auth-page">
         <div class="auth-container">
@@ -30,20 +34,30 @@
                     <form id="login-form-element">
                         <div class="form-group">
                             <label for="login-email">Email Address</label>
-                            <input type="email" id="login-email" autocomplete="username" required placeholder="Enter your email">
+                            <input type="email" id="login-email" autocomplete="username" required
+                                placeholder="Enter your email">
                         </div>
 
                         <div class="form-group">
                             <label for="login-password">Password</label>
                             <div style="position: relative;">
-                                <input type="password" id="login-password" autocomplete="current-password" required placeholder="Enter your password" style="padding-right: 45px;">
-                                <button type="button" id="toggle-login-password" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 5px; display: flex; align-items: center; justify-content: center;" title="Show/Hide Password">
-                                    <svg id="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6c757d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <input type="password" id="login-password" autocomplete="current-password" required
+                                    placeholder="Enter your password" style="padding-right: 45px;">
+                                <button type="button" id="toggle-login-password"
+                                    style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 5px; display: flex; align-items: center; justify-content: center;"
+                                    title="Show/Hide Password">
+                                    <svg id="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                                        stroke="#6c757d" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round">
                                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                                         <circle cx="12" cy="12" r="3"></circle>
                                     </svg>
-                                    <svg id="eye-off-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6c757d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
-                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                    <svg id="eye-off-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                                        stroke="#6c757d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                        style="display: none;">
+                                        <path
+                                            d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24">
+                                        </path>
                                         <line x1="1" y1="1" x2="23" y2="23"></line>
                                     </svg>
                                 </button>
@@ -61,12 +75,21 @@
                         <div style="flex: 1; height: 1px; background: #e0e0e0;"></div>
                     </div>
 
-                    <button type="button" id="google-signin-btn" class="btn" style="width: 100%; background: white; color: #333; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; gap: 0.75rem; font-weight: 500;">
+                    <button type="button" id="google-signin-btn" class="btn"
+                        style="width: 100%; background: white; color: #333; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; gap: 0.75rem; font-weight: 500;">
                         <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
-                            <path d="M9.003 18c2.43 0 4.467-.806 5.956-2.18L12.05 13.56c-.806.54-1.836.86-3.047.86-2.344 0-4.328-1.584-5.036-3.711H.96v2.332C2.44 15.983 5.485 18 9.003 18z" fill="#34A853"/>
-                            <path d="M3.964 10.712c-.18-.54-.282-1.117-.282-1.71 0-.593.102-1.17.282-1.71V4.96H.957C.347 6.175 0 7.55 0 9.002c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
-                            <path d="M9.003 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.464.891 11.426 0 9.003 0 5.485 0 2.44 2.017.96 4.958L3.967 7.29c.708-2.127 2.692-3.71 5.036-3.71z" fill="#EA4335"/>
+                            <path
+                                d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"
+                                fill="#4285F4" />
+                            <path
+                                d="M9.003 18c2.43 0 4.467-.806 5.956-2.18L12.05 13.56c-.806.54-1.836.86-3.047.86-2.344 0-4.328-1.584-5.036-3.711H.96v2.332C2.44 15.983 5.485 18 9.003 18z"
+                                fill="#34A853" />
+                            <path
+                                d="M3.964 10.712c-.18-.54-.282-1.117-.282-1.71 0-.593.102-1.17.282-1.71V4.96H.957C.347 6.175 0 7.55 0 9.002c0 1.452.348 2.827.957 4.042l3.007-2.332z"
+                                fill="#FBBC05" />
+                            <path
+                                d="M9.003 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.464.891 11.426 0 9.003 0 5.485 0 2.44 2.017.96 4.958L3.967 7.29c.708-2.127 2.692-3.71 5.036-3.71z"
+                                fill="#EA4335" />
                         </svg>
                         Continue with Google
                     </button>
@@ -82,8 +105,10 @@
     <footer>
         <div class="footer-inner">
             <div class="footer-col">
-                <img src="assets/inlogo.png" alt="AI Trip Planner" class="logo-img" style="height:32px; margin-bottom:.75rem; filter: brightness(0) invert(1);">
-                <p style="color:#a9c2b6; max-width: 250px;">Plan smarter, travel better. AI itineraries and verified trips.</p>
+                <img src="assets/inlogo.png" alt="AI Trip Planner" class="logo-img"
+                    style="height:32px; margin-bottom:.75rem; filter: brightness(0) invert(1);">
+                <p style="color:#a9c2b6; max-width: 250px;">Plan smarter, travel better. AI itineraries and verified
+                    trips.</p>
             </div>
             <div class="footer-col">
                 <h4>Quick Links</h4>
@@ -101,14 +126,22 @@
             </div>
             <div class="footer-col">
                 <h4>Get in Touch</h4>
-                <a href="mailto:support@aitripplanner.app">support@aitripplanner.app</a>
-                <a href="tel:+923000000000">+92 300 0000000</a>
-                <div style="margin-top: 1rem; display: flex; gap: 1rem;">
-                    <a href="#" style="color: #fff; font-size: 1.2rem;" title="Facebook">📘</a>
-                    <a href="#" style="color: #fff; font-size: 1.2rem;" title="Instagram">📷</a>
-                    <a href="#" style="color: #fff; font-size: 1.2rem;" title="Twitter">🐦</a>
+
+                <a href="mailto:support@aitripplanner.app">
+                    <i class="fa-solid fa-envelope"></i> support@aitripplanner.app
+                </a>
+
+                <a href="tel:+923000000000">
+                    <i class="fa-solid fa-phone"></i> +92 300 0000000
+                </a>
+
+                <div class="social-links" style="margin-top: 1rem; display: flex; gap: 1rem;">
+                    <a href="#" title="Facebook"><i class="fa-brands fa-facebook-f"></i></a>
+                    <a href="#" title="Instagram"><i class="fa-brands fa-instagram"></i></a>
+                    <a href="#" title="Twitter"><i class="fa-brands fa-x-twitter"></i></a>
                 </div>
             </div>
+
         </div>
         <div class="footer-bottom">© <span id="year"></span> AI Trip Planner. All rights reserved.</div>
     </footer>
@@ -118,4 +151,5 @@
 
     <script type="module" src="js/login.js"></script>
 </body>
+
 </html>

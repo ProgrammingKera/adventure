@@ -19,6 +19,16 @@ function initNavbarAuth() {
             }
         });
 
+        // Show/hide My Bookings link based on login status
+        const myBookingsNav = document.getElementById('my-bookings-nav');
+        if (myBookingsNav) {
+            if (user) {
+                myBookingsNav.style.display = 'block';
+            } else {
+                myBookingsNav.style.display = 'none';
+            }
+        }
+
         if (user) {
             authBtn.textContent = 'Logout';
             authBtn.classList.remove('btn-secondary');
@@ -39,7 +49,20 @@ function initNavbarAuth() {
                 window.location.href = 'login.html';
             };
         }
+        
+        // Update mobile menu button if it exists
+        updateMobileAuthButton();
     });
+}
+
+function updateMobileAuthButton() {
+    const authBtn = document.getElementById('auth-btn');
+    const authBtnMobile = document.getElementById('auth-btn-mobile');
+    
+    if (authBtnMobile && authBtn) {
+        authBtnMobile.textContent = authBtn.textContent;
+        authBtnMobile.onclick = authBtn.onclick;
+    }
 }
 
 initNavbarAuth();
@@ -48,6 +71,7 @@ initNavbarAuth();
 function initMobileMenu() {
     const mobileToggle = document.querySelector('.mobile-menu-toggle');
     const navLinks = document.querySelector('.nav-links.center');
+    const authBtn = document.getElementById('auth-btn');
     
     if (mobileToggle && navLinks) {
         mobileToggle.addEventListener('click', () => {
@@ -63,6 +87,27 @@ function initMobileMenu() {
                 navLinks.classList.remove('active');
             });
         });
+        
+        // Add auth button to mobile menu only on mobile
+        if (authBtn && window.innerWidth <= 768) {
+            // Check if button already exists
+            if (!document.getElementById('auth-btn-mobile')) {
+                const authBtnClone = authBtn.cloneNode(true);
+                authBtnClone.id = 'auth-btn-mobile';
+                authBtnClone.style.width = '100%';
+                authBtnClone.style.marginTop = '1rem';
+                authBtnClone.style.marginLeft = '0';
+                authBtnClone.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (authBtn.onclick) {
+                        authBtn.onclick();
+                    }
+                    mobileToggle.classList.remove('active');
+                    navLinks.classList.remove('active');
+                });
+                navLinks.appendChild(authBtnClone);
+            }
+        }
         
         // Close menu when clicking outside
         document.addEventListener('click', (e) => {

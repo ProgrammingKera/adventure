@@ -234,7 +234,7 @@ async function init() {
                     successDiv.textContent = '✅ Payment successful! Redirecting...';
                     successDiv.classList.remove('hidden');
 
-                    setTimeout(() => window.location.href = 'profile.html', 2000);
+                    setTimeout(() => window.location.href = 'my-bookings.html', 2000);
 
                 } catch (err) {
                     console.error('❌ Payment error:', err);
