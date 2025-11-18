@@ -2,6 +2,31 @@ import { db, auth } from '../firebase.js';
 import { collection, getDocs, query, where, doc, getDoc, updateDoc, increment, addDoc, serverTimestamp, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
+// Check if user is logged in
+let isAuthChecked = false;
+onAuthStateChanged(auth, (user) => {
+    if (!isAuthChecked) {
+        isAuthChecked = true;
+        const loginMessageContainer = document.getElementById('login-message-container');
+        const exploreLayout = document.querySelector('.explore-layout');
+        const exploreTabs = document.getElementById('explore-tabs');
+        
+        if (!user) {
+            // Show login message, hide explore layout
+            if (loginMessageContainer) loginMessageContainer.style.display = 'block';
+            if (exploreLayout) exploreLayout.style.display = 'none';
+            if (exploreTabs) exploreTabs.style.display = 'none';
+        } else {
+            // User is logged in - show explore layout
+            if (loginMessageContainer) loginMessageContainer.style.display = 'none';
+            if (exploreLayout) exploreLayout.style.display = 'flex';
+            if (exploreTabs) exploreTabs.style.display = 'flex';
+            // Load data for logged in user
+            loadDestinations();
+        }
+    }
+});
+
 // Navigation state
 let currentView = 'cities'; // 'cities', 'agencies', 'trips'
 let selectedCity = null;
@@ -186,7 +211,7 @@ function renderCities(cityEntries) {
     showAgencyInfo(null);
     
     // Show cities, hide agencies
-    document.getElementById('cities-container').style.display = 'grid';
+    document.getElementById('cities-container').style.display = 'block';
     document.getElementById('agencies-container').style.display = 'none';
     
     const citiesContainer = document.getElementById('cities-container');
@@ -243,9 +268,11 @@ function showAgenciesForCity(city) {
     
     // Hide cities, show agencies
     document.getElementById('cities-container').style.display = 'none';
-    document.getElementById('agencies-container').style.display = 'grid';
+    document.getElementById('agencies-container').style.display = 'block';
     
     const agenciesContainer = document.getElementById('agencies-container');
+    agenciesContainer.className = 'city-grid';
+    
     if (agenciesWithCount.length === 0) {
         agenciesContainer.innerHTML = '<p style="padding:1rem; color: var(--text-light);">No agencies found for this city.</p>';
         document.getElementById('content-area').innerHTML = '';
@@ -254,8 +281,8 @@ function showAgenciesForCity(city) {
     
     agenciesContainer.innerHTML = agenciesWithCount.map(agency => `
         <div class="city-card" data-agency-id="${agency.id}">
-            ${agency.description ? `<div class="city-meta" style="font-size: 0.85rem; margin: 0 0 0.5rem 0; color: var(--text-light);">${agency.description.substring(0, 100)}${agency.description.length > 100 ? '...' : ''}</div>` : ''}
-            <div class="city-meta" style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="city-name">${agency.name || 'Agency'}</div>
+            <div class="city-meta" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                 <span>${agency.tripCount} ${agency.tripCount === 1 ? 'trip' : 'trips'}</span>
                 ${agency.rating ? `<span style="color: #FFA500;">★ ${Number(agency.rating).toFixed(1)}</span>` : ''}
             </div>

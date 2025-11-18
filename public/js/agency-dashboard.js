@@ -241,6 +241,7 @@ async function loadTrips(agencyId) {
                         <div class="trip-price">${priceStr} <span style="font-weight:500;color:#6c757d">/ seat</span></div>
                         <div class="chip-row">
                             <span class="chip">${dateStr}</span>
+                            <span class="chip">${trip.numberOfDays || 'N/A'} days</span>
                             <span class="chip">${departure}</span>
                             <span class="chip">${availableSeats}/${trip.totalSeats || 0} seats</span>
                         </div>
@@ -387,6 +388,7 @@ document.getElementById('trip-form').addEventListener('submit', async (e) => {
         dateTimestamp: dateObj ? dateObj.getTime() : null, // Milliseconds timestamp for mobile queries
         startDate: firestoreTimestamp, // duplicate for mobile schemas expecting startDate
         startDateMillis: dateObj ? dateObj.getTime() : null,
+        numberOfDays: parseInt(document.getElementById('trip-days').value),
         // Meta
         departure: document.getElementById('trip-departure').value.trim(),
         totalSeats: parseInt(document.getElementById('trip-total-seats').value),
@@ -475,6 +477,7 @@ window.editTrip = async function(tripId) {
         document.getElementById('trip-departure').value = t.departure || '';
         document.getElementById('trip-total-seats').value = t.totalSeats || '';
         document.getElementById('trip-price').value = t.pricePerSeat || '';
+        document.getElementById('trip-days').value = t.numberOfDays || '';
 
         // Switch to edit mode UI
         currentEditingTripId = tripId;

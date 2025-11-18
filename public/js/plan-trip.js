@@ -11,43 +11,64 @@ onAuthStateChanged(auth, (user) => {
     if (!isAuthChecked) {
         isAuthChecked = true;
         if (!user) {
-            alert('Please login to use AI Trip Planner feature!');
-            window.location.href = 'login.html';
+            // Show login message on page
+            const formContainer = document.querySelector('.form-container');
+            const planResult = document.getElementById('plan-result');
+            if (formContainer) formContainer.style.display = 'none';
+            if (planResult) {
+                planResult.classList.remove('hidden');
+                planResult.innerHTML = `
+                    <div class="alert alert-error" style="text-align: center; padding: 2rem;">
+                        <h3 style="margin-bottom: 1rem; color: var(--primary-color);">Login Required</h3>
+                        <p style="margin-bottom: 1.5rem; color: #666;">Please login to use the AI Trip Planner feature.</p>
+                        <a href="login.html" class="btn btn-primary" style="display: inline-block; padding: 0.75rem 2rem; text-decoration: none;">Go to Login</a>
+                    </div>
+                `;
+            }
+        } else {
+            // User is logged in - show form
+            const formContainer = document.querySelector('.form-container');
+            if (formContainer) formContainer.style.display = 'block';
+            // Initialize form elements
+            initFormElements();
         }
     }
 });
 
-// Budget preset buttons
-const budgetPresets = document.querySelectorAll('.budget-preset');
-const budgetInput = document.getElementById('budget');
+// Only initialize form elements if user is logged in
+const initFormElements = () => {
+    // Budget preset buttons
+    const budgetPresets = document.querySelectorAll('.budget-preset');
+    const budgetInput = document.getElementById('budget');
 
-if (budgetPresets.length > 0 && budgetInput) {
-    budgetPresets.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            const value = btn.getAttribute('data-value');
-            budgetInput.value = value;
-            
-            // Update button styling
+    if (budgetPresets.length > 0 && budgetInput) {
+        budgetPresets.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const value = btn.getAttribute('data-value');
+                budgetInput.value = value;
+                
+                // Update button styling
+                budgetPresets.forEach(b => {
+                    b.style.background = 'white';
+                    b.style.borderColor = '#e0e0e0';
+                    b.style.color = 'var(--primary-color)';
+                });
+                btn.style.background = 'var(--primary-color)';
+                btn.style.borderColor = 'var(--primary-color)';
+                btn.style.color = 'white';
+            });
+        });
+        
+        // Clear button styling when user types
+        budgetInput.addEventListener('input', () => {
             budgetPresets.forEach(b => {
                 b.style.background = 'white';
                 b.style.borderColor = '#e0e0e0';
                 b.style.color = 'var(--primary-color)';
             });
-            btn.style.background = 'var(--primary-color)';
-            btn.style.borderColor = 'var(--primary-color)';
-            btn.style.color = 'white';
         });
-    });
-    
-    // Clear button styling when user types
-    budgetInput.addEventListener('input', () => {
-        budgetPresets.forEach(b => {
-            b.style.background = 'white';
-            b.style.borderColor = '#e0e0e0';
-            b.style.color = 'var(--primary-color)';
-        });
-    });
+    }
 }
 
 // Set minimum date to today (only if elements exist)
@@ -341,6 +362,12 @@ if (tripPlanForm) {
     });
 }
 
+// Function to get image URL - uses keyword-based image mapping
+function getAttractionImage(attractionName) {
+    // Return local attraction.jpg asset
+    return 'assets/attraction.jpg';
+}
+
 // Format structured JSON plan with modern, beautiful design
 export function formatStructuredPlan(plan, formData) {
     console.log('formatStructuredPlan called with plan:', plan);
@@ -451,12 +478,15 @@ export function formatStructuredPlan(plan, formData) {
                 </h2>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
         `;
-        plan.touristAttractions.forEach(attraction => {
+        plan.touristAttractions.forEach((attraction, idx) => {
+            // Generate unique ID for each image fetch
+            const imgId = `attraction-img-${idx}`;
+            // Create SVG placeholder
+            const placeholderSvg = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='220'%3E%3Crect fill='%23e9ecef' width='400' height='220'/%3E%3Ctext x='50%25' y='50%25' font-size='16' fill='%23495057' text-anchor='middle' dominant-baseline='middle' font-family='Arial'%3E${encodeURIComponent(attraction.name)}%3C/text%3E%3C/svg%3E`;
             html += `
                 <div class="modern-card">
                     <div style="position: relative; height: 220px; overflow: hidden;">
-                        <img src="assets/attraction.jpg" alt="${attraction.name}" 
-                             onerror="this.src='https://via.placeholder.com/400x220?text='+encodeURIComponent('${attraction.name}')" 
+                        <img id="${imgId}" src="${placeholderSvg}" alt="${attraction.name}" 
                              style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease;">
                         <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%);"></div>
                     </div>
@@ -471,6 +501,20 @@ export function formatStructuredPlan(plan, formData) {
                 </div>
             `;
         });
+        
+        // Load images after HTML is rendered
+        setTimeout(() => {
+            plan.touristAttractions.forEach((attraction, idx) => {
+                const imgId = `attraction-img-${idx}`;
+                const img = document.getElementById(imgId);
+                if (img) {
+                    const imageUrl = getAttractionImage(attraction.name);
+                    if (imageUrl) {
+                        img.src = imageUrl;
+                    }
+                }
+            });
+        }, 100);
         html += `</div></div>`;
     }
 

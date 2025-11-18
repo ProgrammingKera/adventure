@@ -6,9 +6,17 @@ let isAuthChecked = false;
 onAuthStateChanged(auth, (user) => {
     if (!isAuthChecked) {
         isAuthChecked = true;
+        const loginMessageContainer = document.getElementById('login-message-container');
+        const formContainer = document.querySelector('.form-container');
+        
         if (!user) {
-            alert('Please login to use Image Prediction feature!');
-            window.location.href = 'login.html';
+            // Show login message, hide form
+            if (loginMessageContainer) loginMessageContainer.style.display = 'block';
+            if (formContainer) formContainer.style.display = 'none';
+        } else {
+            // User is logged in - show form
+            if (loginMessageContainer) loginMessageContainer.style.display = 'none';
+            if (formContainer) formContainer.style.display = 'block';
         }
     }
 });
@@ -159,7 +167,7 @@ predictButton.addEventListener('click', async () => {
                     </div>
                 </div>
                 <div style="margin-top:1.5rem; text-align:center;">
-                    <a class="btn btn-primary" href="plan-trip.html" style="display:inline-block; padding:0.75rem 2rem;">AI Trip Planner</a>
+                    <a class="btn btn-primary" href="plan-trip.html" style="display:inline-block; padding:0.75rem 2rem; margin-bottomb     :20px">AI Trip Planner</a>
                 </div>
             `;
             card.innerHTML = html;

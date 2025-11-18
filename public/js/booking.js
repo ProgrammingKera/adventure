@@ -140,11 +140,28 @@ async function init() {
     // Auth check and prefill
     onAuthStateChanged(auth, async (user) => {
         const profileLink = document.getElementById('profile-link');
+        const bookingForm = document.getElementById('booking-form');
+        const errorDiv = document.getElementById('booking-error');
+        
         if (!user) {
-            alert('Please login to continue booking');
-            window.location.href = 'profile.html';
+            // Show login message on booking page
+            if (bookingForm) bookingForm.style.display = 'none';
+            if (errorDiv) {
+                errorDiv.classList.remove('hidden');
+                errorDiv.innerHTML = `
+                    <div style="text-align: center; padding: 2rem;">
+                        <h3 style="margin-bottom: 1rem; color: var(--primary-color);">Login Required</h3>
+                        <p style="margin-bottom: 1.5rem; color: #666;">Please login to continue with your booking.</p>
+                        <a href="login.html" class="btn btn-primary" style="display: inline-block; padding: 0.75rem 2rem; text-decoration: none;">Go to Login</a>
+                    </div>
+                `;
+            }
             return;
         }
+        
+        // User is logged in
+        if (bookingForm) bookingForm.style.display = 'block';
+        if (errorDiv) errorDiv.classList.add('hidden');
         profileLink.textContent = 'Profile';
 
         const userSnap = await getDoc(doc(db, 'users', user.uid));
@@ -165,8 +182,8 @@ async function init() {
 
         const user = auth.currentUser;
         if (!user) {
-            alert('Please login to continue');
-            window.location.href = 'login.html';
+            errorDiv.textContent = 'Please login to continue booking';
+            errorDiv.classList.remove('hidden');
             return;
         }
 

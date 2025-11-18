@@ -87,10 +87,16 @@ document.getElementById('logout-btn')?.addEventListener('click', async () => {
 });
 
 // Edit Profile Button
-document.getElementById('edit-profile-btn')?.addEventListener('click', () => {
-    const form = document.getElementById('edit-profile-form');
-    form.classList.toggle('hidden');
-});
+const editProfileBtn = document.getElementById('edit-profile-btn');
+if (editProfileBtn) {
+    editProfileBtn.addEventListener('click', () => {
+        const form = document.getElementById('edit-profile-form');
+        if (form) {
+            form.classList.toggle('hidden');
+            console.log('Edit profile form toggled:', form.classList.contains('hidden') ? 'hidden' : 'shown');
+        }
+    });
+}
 
 // Change Password Button
 document.getElementById('change-password-btn')?.addEventListener('click', () => {
