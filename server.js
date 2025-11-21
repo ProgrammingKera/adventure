@@ -27,6 +27,13 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'AI Trip Planner API is running' });
 });
 
+// Config endpoint - serve API keys
+app.get('/api/config', (req, res) => {
+  res.json({
+    GROQ_API_KEY_FUEL: process.env.GROQ_API_KEY_FUEL || process.env.GROQ_API_KEY
+  });
+});
+
 // AI Trip Planning - Gemini API
 app.post('/api/generate-plan', async (req, res) => {
   try {
