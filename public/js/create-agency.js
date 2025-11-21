@@ -85,8 +85,7 @@ document.getElementById('create-agency-form').addEventListener('submit', async (
         phone: document.getElementById('agency-phone').value.trim(),
         description: document.getElementById('agency-description').value.trim(),
         ownerId: user.uid,
-        averageRating: 0,
-        ratingCount: 0,
+        rating: 0,
         createdAt: serverTimestamp()
     };
 
@@ -95,19 +94,21 @@ document.getElementById('create-agency-form').addEventListener('submit', async (
         const agencyDocRef = await addDoc(collection(db, 'agencies'), agencyData);
         const agencyId = agencyDocRef.id;
 
-        // Upsert user document to set userType to AGENCY (create if missing)
+        // Upsert user document to set activeRole to AGENCY (create if missing)
         const userDocRef = doc(db, 'users', user.uid);
         await updateDoc(userDocRef, {
-            userType: 'AGENCY',
-            agencyId: agencyId
+            activeRole: 'AGENCY',
+            agencyId: agencyId,
+            roles: ['TRAVELER', 'AGENCY']
         }).catch(async () => {
             // If user document doesn't exist, create it
             await setDoc(userDocRef, {
                 id: user.uid,
                 name: user.displayName || 'User',
                 email: user.email || '',
-                userType: 'AGENCY',
+                activeRole: 'AGENCY',
                 agencyId: agencyId,
+                roles: ['TRAVELER', 'AGENCY'],
                 createdAt: serverTimestamp()
             });
         });
