@@ -109,6 +109,7 @@ if (tripPlanForm) {
     
     // Collect form data
     const formData = {
+        departure: document.getElementById('departure').value,
         destination: document.getElementById('destination').value,
         startDate: document.getElementById('startDate').value,
         endDate: document.getElementById('endDate').value,
@@ -372,6 +373,18 @@ function getAttractionImage(attractionName) {
 export function formatStructuredPlan(plan, formData) {
     console.log('formatStructuredPlan called with plan:', plan);
     console.log('formData:', formData);
+    
+    // Extract all values from formData
+    if (!formData) formData = {};
+    const departure = formData.departure || 'Your Location';
+    const destination = formData.destination || 'Unknown';
+    const startDate = formData.startDate || 'N/A';
+    const endDate = formData.endDate || 'N/A';
+    const numberOfPeople = formData.numberOfPeople || '1';
+    const budget = formData.budget || '0';
+    
+    console.log('Extracted values:', { departure, destination, startDate, endDate, numberOfPeople, budget });
+    
     let html = `
         <style>
             @keyframes fadeInUp {
@@ -416,14 +429,15 @@ export function formatStructuredPlan(plan, formData) {
                 <h1 style="font-size: 2.5rem; font-weight: 800; background: linear-gradient(135deg, var(--primary-color) 0%, #2d8659 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 1rem;">
                     ✨ Your Perfect Trip Plan
                 </h1>
+                <!-- Route Display -->
+                <div style="display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 1.5rem; font-size: 1.1rem; font-weight: 600;">
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 0.75rem 1.5rem; border-radius: 12px;">${departure}</div>
+                    <div style="color: var(--primary-color); font-size: 1.5rem;">→</div>
+                    <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 0.75rem 1.5rem; border-radius: 12px;">${destination}</div>
+                </div>
                 <div style="display: inline-flex; gap: 2rem; padding: 1.5rem 2.5rem; background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%); border-radius: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); margin-top: 1.5rem;">
                     <div style="text-align: center;">
-                        <div style="font-size: 0.85rem; color: #666; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 1px;">📍 Destination</div>
-                        <div style="font-size: 1.2rem; font-weight: 700; color: var(--primary-color);">${formData.destination}</div>
-                    </div>
-                    <div style="width: 1px; background: #e0e0e0;"></div>
-                    <div style="text-align: center;">
-                        <div style="font-size: 0.85rem; color: #666; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 1px;">Duration</div>
+                        <div style="font-size: 0.85rem; color: #666; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 1px;">📅 Duration</div>
                         <div style="font-size: 1.2rem; font-weight: 700; color: var(--primary-color);">${formData.startDate} to ${formData.endDate}</div>
                     </div>
                     <div style="width: 1px; background: #e0e0e0;"></div>
@@ -434,11 +448,65 @@ export function formatStructuredPlan(plan, formData) {
                     <div style="width: 1px; background: #e0e0e0;"></div>
                     <div style="text-align: center;">
                         <div style="font-size: 0.85rem; color: #666; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 1px;">💰 Budget</div>
-                        <div style="font-size: 1.2rem; font-weight: 700; color: var(--primary-color);">${formData.budget}</div>
+                        <div style="font-size: 1.2rem; font-weight: 700; color: var(--primary-color);">PKR ${budget}</div>
                     </div>
                 </div>
             </div>
     `;
+    
+    // Calculate budget amount for comparison
+    const budgetAmount = parseInt(budget.toString().replace(/[^0-9]/g, '')) || 0;
+    
+    // Budget Comparison and Transportation Section
+    const totalCostStr = plan.tripCost && plan.tripCost.total ? plan.tripCost.total.toString() : '';
+    const totalCost = parseInt(totalCostStr.replace(/[^0-9]/g, '')) || 0;
+    
+    if (totalCost > 0) {
+        const budgetStatus = totalCost > budgetAmount ? 'warning' : 'success';
+        const statusColor = budgetStatus === 'warning' ? '#d32f2f' : '#388e3c';
+        const statusBg = budgetStatus === 'warning' ? '#ffebee' : '#e8f5e9';
+        const difference = Math.abs(totalCost - budgetAmount);
+        const message = budgetStatus === 'warning' 
+            ? `Your total estimated cost is PKR ${totalCost}, which is PKR ${difference} MORE than your budget of PKR ${budgetAmount}. Please increase your budget or adjust your preferences.`
+            : `Great! Your total estimated cost is PKR ${totalCost}, which is PKR ${difference} LESS than your budget of PKR ${budgetAmount}.`;
+        
+        html += `
+            <div class="plan-section" style="margin-bottom: 3rem;">
+                <div style="background: ${statusBg}; border-left: 4px solid ${statusColor}; padding: 1.5rem; border-radius: 12px;">
+                    <h3 style="color: ${statusColor}; margin: 0 0 0.5rem 0;">
+                        Budget Analysis
+                    </h3>
+                    <p style="color: #555; margin: 0; font-size: 0.95rem;">${message}</p>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Transportation Details Section
+    if (plan.localTransportation && plan.localTransportation.options && plan.localTransportation.options.length > 0) {
+        html += `
+            <div class="plan-section" style="margin-bottom: 3rem;">
+                <h2 class="section-title" style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+                    <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center;">
+                        <span style="font-size: 1.5rem;">🚗</span>
+                    </div>
+                    Route: ${departure} to ${destination}
+                </h2>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem;">
+        `;
+        plan.localTransportation.options.forEach(option => {
+            html += `
+                <div class="modern-card" style="padding: 1.5rem;">
+                    <h3 style="color: #2d3748; margin: 0 0 0.75rem 0; font-size: 1.1rem; font-weight: 700; text-transform: capitalize;">${option.type}</h3>
+                    <div style="background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%); padding: 1rem; border-radius: 10px; margin-bottom: 1rem;">
+                        <div style="color: #4a5568; font-size: 0.9rem; margin-bottom: 0.5rem;">Cost: <strong style="color: var(--primary-color); font-size: 1.1rem;">${option.cost || 'N/A'}</strong></div>
+                        <div style="color: #718096; font-size: 0.85rem;">${option.description || ''}</div>
+                    </div>
+                </div>
+            `;
+        });
+        html += `</div></div>`;
+    }
 
     // 1. Weather Forecast Section
     if (plan.weather && plan.weather.length > 0) {
@@ -803,7 +871,7 @@ export function formatStructuredPlan(plan, formData) {
 
     html += `
             <div style="text-align: center; margin-top: 3rem; padding-top: 2rem; border-top: 2px solid #e8eaf6;">
-                <button class="btn btn-primary" onclick="savePlan()" style="padding: 1rem 3rem; font-size: 1rem; font-weight: 700; border-radius: 10px; background: linear-gradient(135deg, var(--primary-color) 0%, #2d8659 100%); color: white; border: none; cursor: pointer; box-shadow: 0 8px 24px rgba(0,103,52,0.3); transition: all 0.3s ease;">
+                <button class="btn btn-primary" onclick="savePlan()" style="display: inline-block; padding: 1rem 2.5rem; text-decoration: none; background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%); background-blend-mode: overlay; color: white; font-weight: 600; border-radius: 20px; box-shadow: 0 4px 15px rgba(0, 103, 52, 0.3); transition: all 0.3s ease; border: none; cursor: pointer; font-size: 1rem;" onmouseover="this.style.boxShadow='0 6px 25px rgba(0, 103, 52, 0.4)'; this.style.transform='translateY(-2px);'" onmouseout="this.style.boxShadow='0 4px 15px rgba(0, 103, 52, 0.3)'; this.style.transform='translateY(0)';">
                     Save Trip Plan
                 </button>
             </div>
@@ -895,6 +963,7 @@ window.savePlan = async function() {
         }
         
         // Get form data with null checks
+        const departureEl = document.getElementById('departure');
         const destinationEl = document.getElementById('destination');
         const startDateEl = document.getElementById('startDate');
         const endDateEl = document.getElementById('endDate');
@@ -903,13 +972,14 @@ window.savePlan = async function() {
         const accommodationTypeEl = document.getElementById('accommodationType');
         const specialRequirementsEl = document.getElementById('specialRequirements');
         
-        if (!destinationEl || !startDateEl || !endDateEl) {
+        if (!departureEl || !destinationEl || !startDateEl || !endDateEl) {
             alert('Error: Form elements not found. Please try again.');
             return;
         }
         
         const savedPlanData = {
             userId: user.uid,
+            departure: departureEl.value,
             destination: destinationEl.value,
             startDate: startDateEl.value,
             endDate: endDateEl.value,

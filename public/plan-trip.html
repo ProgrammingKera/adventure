@@ -7,6 +7,11 @@
     <title>AI Trip Planning - AI Trip Planner</title>
     <link rel="icon" href="/assets/man.png">
     <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 
@@ -42,6 +47,9 @@
             <p style="text-align: center; color: var(--text-light); margin-bottom: 1.25rem;">
                 Create a smart day-by-day itinerary tailored to your budget, dates and interests.
             </p>
+            <div style="text-align: center; margin-bottom: 1.5rem;">
+                <a href="fuel-calculator.html" class="btn btn-primary">Calculate Fuel & Route</a>
+            </div>
 
             <div class="form-container">
                 <form id="trip-plan-form">
@@ -49,6 +57,12 @@
                         <label for="destination">Destination *</label>
                         <input type="text" id="destination" name="destination" required
                             placeholder="e.g., Lahore, Islamabad, Hunza">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="departure">Departure City *</label>
+                        <input type="text" id="departure" name="departure" required
+                            placeholder="e.g., Karachi, Rawalpindi, Peshawar">
                     </div>
 
                     <div class="form-group">
@@ -71,7 +85,7 @@
                         <label for="budget">Budget Range *</label>
                         <div style="display: flex; gap: 0.5rem; align-items: center;">
                             <span style="font-weight: 600; color: var(--primary-color);">PKR</span>
-                            <input type="number" id="budget" name="budget" min="0" step="1000" required
+                            <input type="number" id="budget" name="budget" min="1000" required
                                 placeholder="Enter amount or select from presets" style="flex: 1;">
                         </div>
                         <div style="margin-top: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.5rem;">

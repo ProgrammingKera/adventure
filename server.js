@@ -30,7 +30,7 @@ app.get('/api/health', (req, res) => {
 // AI Trip Planning - Gemini API
 app.post('/api/generate-plan', async (req, res) => {
   try {
-    const { destination, startDate, endDate, numberOfPeople, budget, accommodationType, preferences, specialRequirements } = req.body;
+    const { departure, destination, startDate, endDate, numberOfPeople, budget, accommodationType, preferences, specialRequirements } = req.body;
 
     // Calculate number of days
     const start = new Date(startDate);
@@ -48,7 +48,25 @@ app.post('/api/generate-plan', async (req, res) => {
 
     const datesList = dates.join(', ');
 
-    const prompt = `Generate a detailed trip plan in JSON format for ${destination}. Trip details: ${days} days, ${numberOfPeople} people, Budget: ${budget}, Dates: ${datesList}.
+    // Calculate budget per person per day for smart recommendations
+    const budgetAmount = parseInt(budget.toString().replace(/[^0-9]/g, ''));
+    const budgetPerPersonPerDay = Math.floor(budgetAmount / (numberOfPeople * days));
+    const budgetCategory = budgetPerPersonPerDay < 2000 ? 'budget' : budgetPerPersonPerDay < 5000 ? 'mid-range' : 'premium';
+
+    const prompt = `Generate a detailed trip plan in JSON format for a trip from ${departure} to ${destination}. 
+Trip details: ${days} days, ${numberOfPeople} people, Total Budget: ${budget} (${budgetCategory} category - PKR ${budgetPerPersonPerDay}/person/day), Dates: ${datesList}.
+
+IMPORTANT: Tailor ALL recommendations based on the budget category:
+- For BUDGET trips: Recommend affordable local transport, budget hotels/hostels, street food, free attractions
+- For MID-RANGE trips: Mix of comfort and value, good local restaurants, mid-range hotels
+- For PREMIUM trips: Luxury accommodations, fine dining, exclusive experiences
+
+CRITICAL: For the "transport" section, provide AUTHENTIC transport options from ${departure} to ${destination}:
+- Include real transport types available on this route (buses, trains, wagons, taxis, etc.)
+- Provide realistic costs for each option
+- Include detailed descriptions of each transport option
+- Consider the route distance and travel time
+- Tailor to the budget category (${budgetCategory})
 
 Return ONLY valid JSON with this exact structure:
 {
@@ -214,11 +232,26 @@ Return ONLY valid JSON with this exact structure:
       parseSuccess = true;
     } catch (parseError) {
       
-      // Strategy 2: Fix trailing commas
+      // Strategy 2: Repair JSON with common fixes
       try {
-        let fixedPlan = generatedPlan;
-        fixedPlan = fixedPlan.replace(/,(\s*[}\]])/g, '$1');
-        planData = JSON.parse(fixedPlan);
+        const repairedPlan = repairJSON(generatedPlan);
+        planData = JSON.parse(repairedPlan);
+        if (planData.trip) {
+          const transformedPlan = {
+            weather: planData.weather || [],
+            touristAttractions: planData.attractions || planData.touristAttractions || [],
+            restaurants: planData.restaurants || [],
+            packingEssentials: planData.packingEssentials || [],
+            accommodations: planData.accommodation || planData.accommodations || [],
+            localTransportation: planData.transport || planData.localTransportation || { options: [] },
+            localEvents: planData.localEvents || [],
+            tripCost: planData.budget_breakdown || planData.tripCost || {},
+            safetyTips: planData.safetyTips || [],
+            itinerary: planData.itinerary || [],
+            originalData: planData
+          };
+          planData = transformedPlan;
+        }
         parseSuccess = true;
       } catch (fixError) {
         

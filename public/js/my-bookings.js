@@ -59,10 +59,28 @@ function renderBookings(bookings) {
             ${bookings.map(booking => {
                 const trip = booking.trip || {};
                 const bookingDate = booking.createdAt?.toDate ? booking.createdAt.toDate().toLocaleDateString() : 'N/A';
+                const paymentStatus = booking.paymentStatus || 'pending';
+                
+                // Determine payment status badge color and text
+                let paymentBadgeColor, paymentBadgeText, paymentBadgeIcon;
+                if (paymentStatus === 'completed' || paymentStatus === 'succeeded') {
+                    paymentBadgeColor = '#22c55e';
+                    paymentBadgeText = 'Paid';
+                    paymentBadgeIcon = 'fa-check-circle';
+                } else if (paymentStatus === 'failed') {
+                    paymentBadgeColor = '#ef4444';
+                    paymentBadgeText = 'Failed';
+                    paymentBadgeIcon = 'fa-times-circle';
+                } else {
+                    paymentBadgeColor = '#f59e0b';
+                    paymentBadgeText = 'Pending';
+                    paymentBadgeIcon = 'fa-clock';
+                }
                 
                 return `
-                    <div class="card" style="display: flex; flex-direction: column; height: 100%;">
+                    <div class="card" style="display: flex; flex-direction: column; height: 100%; position: relative;">
                         ${trip.imageUrl ? `<img src="${trip.imageUrl}" alt="${trip.description || 'Trip'}" style="width: 100%; height: 180px; object-fit: cover; border-radius: 8px 8px 0 0;">` : ''}
+                        <div style="position: absolute; top: 10px; right: 10px; background: ${paymentBadgeColor}; color: white; padding: 0.4rem 0.8rem; border-radius: 20px; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; gap: 0.4rem; box-shadow: 0 2px 8px rgba(0,0,0,0.2);"><i class="fa-solid ${paymentBadgeIcon}"></i>${paymentBadgeText}</div>
                         <div class="card-content" style="flex: 1; display: flex; flex-direction: column;">
                             <h4 class="card-title" style="margin-bottom: 0.75rem;">${trip.description || 'Trip'}</h4>
                             <div class="card-text" style="margin-bottom: 0.5rem;"><strong><i class="fa-solid fa-location-dot" style="color: var(--primary-color); margin-right: 0.5rem;"></i>Location:</strong> ${trip.location || 'N/A'}</div>
@@ -99,19 +117,36 @@ window.viewTripDetails = async function(tripId) {
         const q = query(bookingsRef, where('tripId', '==', tripId), where('userId', '==', currentUser.uid));
         const bookingsSnapshot = await getDocs(q);
         
-        let bookedSeats = 0;
+        let booking = {};
         if (!bookingsSnapshot.empty) {
-            bookedSeats = bookingsSnapshot.docs[0].data().seatsBooked || 0;
+            booking = bookingsSnapshot.docs[0].data();
         }
         
-        showTripDetailsModal(trip, bookedSeats);
+        showTripDetailsModal(trip, booking);
     } catch (error) {
         console.error('Error loading trip details:', error);
         alert('Error loading trip details');
     }
 };
 
-function showTripDetailsModal(trip, bookedSeats = 0) {
+function showTripDetailsModal(trip, booking = {}) {
+    const bookedSeats = booking.seatsBooked || 0;
+    const paymentStatus = booking.paymentStatus || 'pending';
+    const totalAmount = (trip.pricePerSeat || 0) * bookedSeats;
+    
+    // Determine payment status for display
+    let amountDisplayText, amountDisplayColor;
+    if (paymentStatus === 'completed' || paymentStatus === 'succeeded') {
+        amountDisplayText = `PKR ${Number(totalAmount).toLocaleString()}`;
+        amountDisplayColor = '#FF9800';
+    } else if (paymentStatus === 'failed') {
+        amountDisplayText = `PKR ${Number(totalAmount).toLocaleString()} (Failed)`;
+        amountDisplayColor = '#ef4444';
+    } else {
+        amountDisplayText = `PKR ${Number(totalAmount).toLocaleString()} (Pending - Manual)`;
+        amountDisplayColor = '#f59e0b';
+    }
+    
     const modalHTML = `
         <div id="trip-details-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 2000; padding: 1rem;" onclick="if(event.target.id==='trip-details-modal') this.remove();">
             <div style="background: white; border-radius: 16px; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3);" onclick="event.stopPropagation();">
@@ -136,9 +171,9 @@ function showTripDetailsModal(trip, bookedSeats = 0) {
                             <div style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.25rem;"><i class="fa-solid fa-check-circle" style="margin-right: 0.5rem;"></i>My Booked Seats</div>
                             <div style="font-weight: 700; color: var(--primary-color); font-size: 1.2rem;">${bookedSeats}</div>
                         </div>
-                        <div style="background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); padding: 1rem; border-radius: 10px; border-left: 4px solid #FF9800;">
-                            <div style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.25rem;"><i class="fa-solid fa-money-bill" style="margin-right: 0.5rem;"></i>Amount Paid</div>
-                            <div style="font-weight: 700; color: #FF9800; font-size: 1.2rem;">PKR ${Number((trip.pricePerSeat || 0) * bookedSeats).toLocaleString()}</div>
+                        <div style="background: linear-gradient(135deg, ${amountDisplayColor}20 0%, ${amountDisplayColor}10 100%); padding: 1rem; border-radius: 10px; border-left: 4px solid ${amountDisplayColor};">
+                            <div style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.25rem;"><i class="fa-solid fa-money-bill" style="margin-right: 0.5rem;"></i>Amount</div>
+                            <div style="font-weight: 700; color: ${amountDisplayColor}; font-size: 1.2rem;">${amountDisplayText}</div>
                         </div>
                     </div>
                     

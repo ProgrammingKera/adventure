@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fuel & Route Calculator - AI Trip Planner</title>
+    <link rel="icon" href="/assets/man.png">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <a href="index.html" class="logo" aria-label="AI Trip Planner">
+                <img src="assets/inlogo.png" alt="AI Trip Planner Logo" class="logo-img">
+            </a>
+            <button class="mobile-menu-toggle" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <ul class="nav-links center">
+                <li><a class="nav-link" href="index.html">Home</a></li>
+                <li><a class="nav-link" href="image-predict.html">Image Predict</a></li>
+                <li><a class="nav-link" href="plan-trip.html">AI Plan Trip</a></li>
+                <li><a class="nav-link" href="explore.html">Explore</a></li>
+                <li id="my-bookings-nav" style="display: none;"><a class="nav-link" href="my-bookings.html">My Bookings</a></li>
+                <li><a class="nav-link" href="profile.html">Profile</a></li>
+            </ul>
+            <a id="auth-btn" class="btn small btn-secondary auth-cta">Login</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <section class="section">
+            <h2 class="section-title">Fuel & Route Calculator</h2>
+            <p style="text-align: center; color: var(--text-light); margin-bottom: 1.25rem;">
+                Calculate fuel costs, petrol needed, and find hotels on your route.
+            </p>
+
+            <div class="form-container">
+                <form id="fuel-calculator-form">
+                    <div class="form-group">
+                        <label for="fuel-departure">Departure City *</label>
+                        <input type="text" id="fuel-departure" name="fuel-departure" required
+                            placeholder="e.g., Karachi, Rawalpindi">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="fuel-destination">Destination City *</label>
+                        <input type="text" id="fuel-destination" name="fuel-destination" required
+                            placeholder="e.g., Lahore, Islamabad">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="fuel-car-type">Vehicle Type *</label>
+                        <select id="fuel-car-type" name="fuel-car-type" required>
+                            <option value="">Select vehicle type</option>
+                            <option value="sedan">Sedan</option>
+                            <option value="suv">SUV</option>
+                            <option value="hatchback">Hatchback</option>
+                            <option value="van">Van</option>
+                            <option value="truck">Truck</option>
+                            <option value="bike">Bike</option>
+                            <option value="custom">Custom Vehicle</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="custom-vehicle-group" style="display: none;">
+                        <label for="custom-vehicle-name">Vehicle Name</label>
+                        <input type="text" id="custom-vehicle-name" name="custom-vehicle-name"
+                            placeholder="e.g., Toyota Fortuner, Hummer, etc.">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="fuel-consumption">Fuel Consumption (km/liter) *</label>
+                        <input type="number" id="fuel-consumption" name="fuel-consumption" min="1" step="0.5" required
+                            placeholder="e.g., 10 (how many km per liter)">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="fuel-price">Petrol Price (PKR/Liter) *</label>
+                        <input type="number" id="fuel-price" name="fuel-price" min="1" step="0.01" required
+                            placeholder="e.g., 280" value="280">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="fuel-travelers">Number of Travelers *</label>
+                        <input type="number" id="fuel-travelers" name="fuel-travelers" min="1" required
+                            placeholder="e.g., 4" value="1">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">
+                        Calculate & Get Suggestions
+                    </button>
+                </form>
+            </div>
+
+            <div id="fuel-result" class="hidden" style="margin-top: 2rem;">
+                <!-- Results will be displayed here -->
+            </div>
+        </section>
+    </div>
+
+    <footer>
+        <div class="footer-inner">
+            <div class="footer-col">
+                <img src="assets/inlogo.png" alt="AI Trip Planner" class="logo-img"
+                    style="height:32px; margin-bottom:.75rem; filter: brightness(0) invert(1);">
+                <p style="color:#a9c2b6; max-width: 250px;">Plan smarter, travel better.</p>
+            </div>
+            <div class="footer-col">
+                <h4>Quick Links</h4>
+                <a href="index.html">Home</a>
+                <a href="explore.html">Explore</a>
+                <a href="plan-trip.html">AI Trip Planner</a>
+            </div>
+            <div class="footer-col">
+                <h4>Account</h4>
+                <a href="profile.html">Profile</a>
+                <a href="signup.html">Sign Up</a>
+                <a href="login.html">Login</a>
+            </div>
+        </div>
+        <div class="footer-bottom">© <span id="year"></span> AI Trip Planner. All rights reserved.</div>
+    </footer>
+
+    <script>
+        document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
+    <script type="module" src="js/navbar.js"></script>
+    <script type="module" src="js/fuel-calculator.js"></script>
+</body>
+</html>

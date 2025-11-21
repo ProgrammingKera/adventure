@@ -13,6 +13,7 @@ import {
     query,
     where,
     updateDoc,
+    deleteDoc,
     serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { formatStructuredPlan } from './plan-trip.js';
@@ -361,7 +362,9 @@ async function loadUserProfile() {
         }
         
         await loadSavedPlans();
-        await loadMyBookings();
+        if (typeof loadMyBookings === 'function') {
+            await loadMyBookings();
+        }
     } catch (error) {
         console.error('Error loading profile:', error);
     }
@@ -388,9 +391,10 @@ async function loadSavedPlans() {
         container.innerHTML = querySnapshot.docs.map(docSnap => {
             const plan = docSnap.data();
             return `
-                <div class="card">
+                <div class="card" style="position: relative; margin-bottom: 1.5rem;">
+                    <button onclick="deleteSavedPlan('${docSnap.id}')" style="position: absolute; top: 10px; right: 10px; background: #ff4444; color: white; border: none; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: all 0.3s;" onmouseover="this.style.background='#cc0000'; this.style.transform='scale(1.1)'" onmouseout="this.style.background='#ff4444'; this.style.transform='scale(1)'" title="Delete">🗑️</button>
                     <div class="card-content">
-                        <h3 class="card-title">${escapeHtml(plan.destination || 'Trip Plan')}</h3>
+                        <h3 class="card-title">${escapeHtml(plan.departure || 'Your Location')} → ${escapeHtml(plan.destination || 'Trip Plan')}</h3>
                         <p class="card-text"><strong>Duration:</strong> ${escapeHtml(plan.startDate)} to ${escapeHtml(plan.endDate)}</p>
                         <p class="card-text"><strong>Travelers:</strong> ${plan.numberOfPeople}</p>
                         <p class="card-text"><strong>Budget:</strong> ${escapeHtml(plan.budget)}</p>
@@ -405,12 +409,30 @@ async function loadSavedPlans() {
     }
 }
 
+// Delete Saved Plan
+window.deleteSavedPlan = async function(planId) {
+    if (!confirm('Are you sure you want to delete this saved plan?')) {
+        return;
+    }
+    
+    try {
+        await deleteDoc(doc(db, 'savedPlans', planId));
+        alert('Plan deleted successfully!');
+        await loadSavedPlans();
+    } catch (error) {
+        console.error('Error deleting plan:', error);
+        alert('Failed to delete plan: ' + error.message);
+    }
+};
+
 // Load My Bookings
 async function loadMyBookings() {
     const user = auth.currentUser;
     if (!user) return;
     
     const container = document.getElementById('my-bookings-container');
+    if (!container) return;
+    
     container.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading bookings...</p></div>';
 
     try {
@@ -474,6 +496,7 @@ window.viewSavedPlan = async function(planId) {
             // Use the same beautiful format
             try {
                 const formData = {
+                    departure: savedPlan.departure,
                     destination: savedPlan.destination,
                     startDate: savedPlan.startDate,
                     endDate: savedPlan.endDate,
