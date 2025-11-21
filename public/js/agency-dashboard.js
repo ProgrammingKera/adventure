@@ -544,9 +544,23 @@ window.viewTripBookings = async function(tripId) {
             const b = d.data();
             const bookedAt = b.createdAt?.toDate ? b.createdAt.toDate().toLocaleString() : '';
             const totalAmount = b.totalAmount ? `PKR ${b.totalAmount.toLocaleString()}` : '-';
-            const paymentStatus = b.paymentStatus || 'pending';
-            const statusColor = paymentStatus === 'completed' ? '#28a745' : '#ffc107';
-            const statusBadge = `<span style="background: ${statusColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.85rem;">${paymentStatus}</span>`;
+            
+            // Payment status - show Manual or Paid based on payment method
+            const paymentMethod = b.paymentMethod || 'N/A';
+            let statusDisplay, statusColor;
+            
+            if (paymentMethod === 'card') {
+                statusDisplay = 'Paid';
+                statusColor = '#28a745'; // Green
+            } else if (paymentMethod === 'manual') {
+                statusDisplay = 'Manual';
+                statusColor = '#f59e0b'; // Orange
+            } else {
+                statusDisplay = b.paymentStatus || 'pending';
+                statusColor = '#ffc107';
+            }
+            
+            const statusBadge = `<span style="background: ${statusColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.85rem; font-weight: 600;">${statusDisplay}</span>`;
             
             return `
                 <tr class="table-row">

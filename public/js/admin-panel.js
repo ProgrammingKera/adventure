@@ -283,13 +283,13 @@ function renderTrips(trips) {
             </td>
         </tr>
     `).join('');
-}
+} // Added closing bracket here
 
 // Render Bookings
 function renderBookings(bookings) {
     const tbody = document.getElementById('bookings-table-body');
     if (bookings.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center;">No bookings found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center;">No bookings found</td></tr>';
         return;
     }
     
@@ -319,6 +319,11 @@ function renderBookings(bookings) {
         const bookingStatus = booking.status || 'confirmed';
         const statusColor = bookingStatus === 'confirmed' ? '#22c55e' : '#f59e0b';
         
+        // Payment method display
+        const paymentMethod = booking.paymentMethod || 'N/A';
+        const methodDisplay = paymentMethod === 'card' ? '💳 Card' : paymentMethod === 'manual' ? '📋 Manual' : paymentMethod;
+        const methodColor = paymentMethod === 'card' ? '#10b981' : paymentMethod === 'manual' ? '#f59e0b' : '#999';
+        
         return `
             <tr>
                 <td>${booking.userName || 'N/A'}</td>
@@ -327,6 +332,7 @@ function renderBookings(bookings) {
                 <td>PKR ${typeof totalPrice === 'number' ? totalPrice.toLocaleString() : totalPrice}</td>
                 <td><span style="padding: 0.5rem 0.75rem; border-radius: 6px; background: ${paymentColor}20; color: ${paymentColor}; font-weight: 700; display: inline-block; min-width: 120px; text-align: center;">${paymentDisplay}</span></td>
                 <td><strong>${paymentAmount}</strong></td>
+                <td><span style="padding: 0.5rem 0.75rem; border-radius: 6px; background: ${methodColor}20; color: ${methodColor}; font-weight: 600; display: inline-block;">${methodDisplay}</span></td>
                 <td><span style="color: ${statusColor}; font-weight: 600;">${bookingStatus.toUpperCase()}</span></td>
                 <td>${booking.createdAt ? new Date(booking.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}</td>
                 <td>
