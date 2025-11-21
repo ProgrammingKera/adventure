@@ -3,8 +3,9 @@ console.log('fuel-calculator.js loaded');
 import { db, auth } from '../firebase.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
-const GROQ_API_KEY = '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';
-const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_API_KEY_FUEL = await fetch('/api/config').then(r => r.json()).then(d => d.GROQ_API_KEY_FUEL);
+const GROQ_API_URL_FUEL = 'https://api.groq.com/openai/v1/chat/completions';
+
 
 const vehicleData = {
     sedan: { min: 8, max: 10, name: 'Sedan' },
@@ -123,10 +124,10 @@ async function calculateDistance(departure, destination) {
         
         console.log('Calling Groq API for distance calculation...');
         
-        const response = await fetch(GROQ_API_URL, {
+        const response = await fetch(GROQ_API_URL_FUEL, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${GROQ_API_KEY}`,
+                'Authorization': `Bearer ${GROQ_API_KEY_FUEL}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
@@ -187,10 +188,10 @@ Return ONLY valid JSON with no markdown, no code blocks, no extra text:
         
         console.log('Calling AI for route suggestions...');
         
-        const response = await fetch(GROQ_API_URL, {
+        const response = await fetch(GROQ_API_URL_FUEL, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${GROQ_API_KEY}`,
+                'Authorization': `Bearer ${GROQ_API_KEY_FUEL}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
