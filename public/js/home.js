@@ -212,24 +212,26 @@ async function loadFeaturedTrips() {
 
             return `
                 <div class="card">
-                    ${trip.imageUrl ? `<img src="${trip.imageUrl}" alt="${subtitle || 'Trip'}" class="card-image">` : ''}
+                    <div class="card-image-wrapper">
+                        ${trip.imageUrl ? `<img src="${trip.imageUrl}" alt="${subtitle || 'Trip'}" class="card-image">` : ''}
+                    </div>
                     <div class="card-content">
-                        <div style="display:flex; justify-content:space-between; align-items:center; gap: .75rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap: .75rem;">
                             <h3 class="card-title" style="margin:0;">${titleLocation}</h3>
-                            <div class="card-price" style="white-space:nowrap;">${priceStr.replace(' / seat','')} <span style="color:#6c757d; font-weight:500;">/ seat</span></div>
+                            <div class="card-price" style="white-space:nowrap;">${priceStr.replace(' / seat','')} <span style="color:#6c757d; font-weight:500; font-size: 0.8em;">/ seat</span></div>
                         </div>
-                        ${agency ? `<div style="margin-top: 0.5rem;"><span style="color: var(--text-light); font-size: 0.9rem;">by</span> <a href="explore.html?city=${encodeURIComponent(titleLocation)}&agency=${agency.id}" style="color: var(--primary-color); text-decoration: none; font-weight: 600;">${agency.name || 'Agency'}</a></div>` : ''}
-                        ${subtitle ? `<div class="card-text" style="margin-top:.35rem;">${subtitle}</div>` : ''}
-                        <div class="card-meta" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:.5rem; margin-top:.5rem;">
-                            <div><strong>Departure:</strong> ${departure}</div>
-                            <div><strong>Seats:</strong> ${availableSeats} available</div>
-                            <div><strong>Date:</strong> ${dateDisplay}</div>
+                        ${agency ? `<div style="margin-top: 0.25rem;"><span style="color: var(--text-light); font-size: 0.9rem;">by</span> <a href="explore.html?city=${encodeURIComponent(titleLocation)}&agency=${agency.id}" style="color: var(--primary-color); text-decoration: none; font-weight: 600;">${agency.name || 'Agency'}</a></div>` : ''}
+                        ${subtitle ? `<div class="card-text" style="margin-top:.5rem;">${subtitle}</div>` : ''}
+                        <div class="card-meta" style="margin-top: auto; padding-top: 1rem;">
+                            <div><i class="fa-regular fa-calendar"></i> ${dateDisplay}</div>
+                            <div><i class="fa-solid fa-chair"></i> ${availableSeats} left</div>
                         </div>
-                        <div style="display:flex; justify-content:flex-end; align-items:center; margin-top: .75rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #f0f0f0;">
+                            <div style="font-size: 0.85rem; color: var(--text-light);"><i class="fa-solid fa-location-dot"></i> ${departure}</div>
                             ${availableSeats > 0 ? `
-                                <a class="btn btn-primary" style="min-width: 140px;" href="booking.html?tripId=${doc.id}">Book Now</a>
+                                <a class="btn btn-primary" style="padding: 0.5rem 1.25rem; font-size: 0.9rem;" href="booking.html?tripId=${doc.id}">Book Now</a>
                             ` : `
-                                <button class="btn btn-secondary" disabled>Sold Out</button>
+                                <button class="btn btn-secondary" disabled style="padding: 0.5rem 1.25rem; font-size: 0.9rem;">Sold Out</button>
                             `}
                         </div>
                     </div>

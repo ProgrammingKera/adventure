@@ -48,11 +48,11 @@ if (fuelForm) {
         const originalText = submitBtn.textContent;
         submitBtn.disabled = true;
         submitBtn.textContent = 'Calculating...';
-        
+
         const resultDiv = document.getElementById('fuel-result');
         resultDiv.innerHTML = '<div class="loading"><div class="spinner"></div><p>Calculating distance and finding authentic suggestions...</p></div>';
         resultDiv.classList.remove('hidden');
-        
+
         try {
             // Get form values with null checks
             const departureEl = document.getElementById('fuel-departure');
@@ -61,22 +61,22 @@ if (fuelForm) {
             const consumptionEl = document.getElementById('fuel-consumption');
             const fuelPriceEl = document.getElementById('fuel-price');
             const travelersEl = document.getElementById('fuel-travelers');
-            
+
             if (!departureEl || !destinationEl || !carTypeEl || !consumptionEl || !fuelPriceEl || !travelersEl) {
                 throw new Error('Form elements not found');
             }
-            
+
             const departure = departureEl.value.trim();
             const destination = destinationEl.value.trim();
             const carType = carTypeEl.value;
             const consumption = parseFloat(consumptionEl.value);
             const fuelPrice = parseFloat(fuelPriceEl.value);
             const travelers = parseInt(travelersEl.value);
-            
+
             if (!departure || !destination || !carType || !consumption || !fuelPrice || !travelers) {
                 throw new Error('Please fill all required fields');
             }
-            
+
             // Get custom vehicle name if selected
             let carName = carType.charAt(0).toUpperCase() + carType.slice(1);
             if (carType === 'custom') {
@@ -87,17 +87,17 @@ if (fuelForm) {
                     throw new Error('Please enter custom vehicle name');
                 }
             }
-            
+
             // Calculate distance using AI
             const distance = await calculateDistance(departure, destination);
             if (!distance) throw new Error('Could not calculate distance. Please check city names.');
-            
+
             const fuelNeeded = distance / consumption;
             const totalCost = fuelNeeded * fuelPrice;
             const costPerPerson = totalCost / travelers;
-            
+
             const aiSuggestions = await getAISuggestions(departure, destination, distance);
-            
+
             displayResults({
                 departure, destination, distance: Math.round(distance),
                 carType: carName,
@@ -121,9 +121,9 @@ if (fuelForm) {
 async function calculateDistance(departure, destination) {
     try {
         const prompt = `Calculate the road distance in kilometers between ${departure} and ${destination} in Pakistan. Respond with ONLY a number (e.g., 1257). No text, no units, just the number.`;
-        
+
         console.log('Calling Groq API for distance calculation...');
-        
+
         const response = await fetch(GROQ_API_URL_FUEL, {
             method: 'POST',
             headers: {
@@ -142,26 +142,26 @@ async function calculateDistance(departure, destination) {
                 max_tokens: 50
             })
         });
-        
+
         console.log('API Response Status:', response.status);
-        
+
         if (!response.ok) {
             const errorText = await response.text();
             console.error('API Error:', response.status, errorText);
             throw new Error(`API Error: ${response.status}`);
         }
-        
+
         const data = await response.json();
         console.log('Full API Response:', data);
-        
+
         if (!data.choices || !data.choices[0] || !data.choices[0].message) {
             console.error('Invalid response structure:', data);
             throw new Error('Invalid API response structure');
         }
-        
+
         const content = data.choices[0].message.content.trim();
         console.log('Distance response content:', content);
-        
+
         // Extract the first number from the response
         const numberMatch = content.match(/\d+/);
         if (numberMatch) {
@@ -171,7 +171,7 @@ async function calculateDistance(departure, destination) {
                 return distance;
             }
         }
-        
+
         throw new Error(`Could not extract valid distance from response: "${content}"`);
     } catch (error) {
         console.error('Distance calculation error:', error);
@@ -185,9 +185,9 @@ async function getAISuggestions(departure, destination, distance) {
 
 Return ONLY valid JSON with no markdown, no code blocks, no extra text:
 {"stops":[{"name":"place name","type":"hotel/dhaba/tea-stall/attraction","location":"location on route","distance":"km from start","description":"brief details","price":"PKR range if applicable"}],"roadTips":["authentic tip 1","authentic tip 2","authentic tip 3"]}`;
-        
+
         console.log('Calling AI for route suggestions...');
-        
+
         const response = await fetch(GROQ_API_URL_FUEL, {
             method: 'POST',
             headers: {
@@ -196,28 +196,28 @@ Return ONLY valid JSON with no markdown, no code blocks, no extra text:
             },
             body: JSON.stringify({
                 model: 'moonshotai/kimi-k2-instruct',
-                messages: [{role: 'user', content: prompt}],
+                messages: [{ role: 'user', content: prompt }],
                 temperature: 0.7,
                 max_tokens: 2000
             })
         });
-        
+
         if (!response.ok) {
             console.error('AI API Error:', response.status);
             return null;
         }
-        
+
         const data = await response.json();
         console.log('AI Response:', data);
-        
+
         if (!data.choices || !data.choices[0] || !data.choices[0].message) {
             console.error('Invalid AI response structure');
             return null;
         }
-        
+
         const content = data.choices[0].message.content;
         console.log('AI Content:', content);
-        
+
         // Extract JSON from response
         const jsonMatch = content.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
@@ -228,7 +228,7 @@ Return ONLY valid JSON with no markdown, no code blocks, no extra text:
                 jsonStr = jsonStr.replace(/,\s*]/g, ']'); // Remove trailing commas before ]
                 // Fix keys with leading/trailing spaces
                 jsonStr = jsonStr.replace(/"\s+([a-zA-Z]+)\s*":/g, '"$1":');
-                
+
                 const parsed = JSON.parse(jsonStr);
                 console.log('Parsed suggestions:', parsed);
                 return parsed;
@@ -238,7 +238,7 @@ Return ONLY valid JSON with no markdown, no code blocks, no extra text:
                 return { stops: [], roadTips: [] };
             }
         }
-        
+
         console.error('No JSON found in response:', content);
         return null;
     } catch (error) {
@@ -250,99 +250,141 @@ Return ONLY valid JSON with no markdown, no code blocks, no extra text:
 function displayResults(data) {
     const resultDiv = document.getElementById('fuel-result');
     let html = `<div style="max-width: 1200px; margin: 0 auto; padding: 2rem;">`;
-    
-    html += `<div style="text-align: center; margin-bottom: 2rem;">
-        <h1 style="font-size: 2rem; font-weight: 800; background: linear-gradient(135deg, var(--primary-color) 0%, #2d8659 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 1rem;">
+
+    html += `<div style="text-align: center; margin-bottom: 3rem;">
+        <h1 style="font-size: 2.5rem; font-weight: 800; background: linear-gradient(135deg, var(--primary-color) 0%, #2d8659 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 1rem; text-shadow: 0 2px 10px rgba(0,0,0,0.05);">
             Trip Fuel Analysis
         </h1>
-        <div style="display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 1.5rem;">
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 0.75rem 1.5rem; border-radius: 12px;">${data.departure}</div>
-            <div style="color: var(--primary-color); font-size: 1.5rem;">→</div>
-            <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 0.75rem 1.5rem; border-radius: 12px;">${data.destination}</div>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 1.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1rem 2rem; border-radius: 50px; font-weight: 600; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);"><i class="fa-solid fa-location-dot" style="margin-right: 0.5rem;"></i>${data.departure}</div>
+            <div style="color: var(--primary-color); font-size: 1.5rem;"><i class="fa-solid fa-arrow-right-long"></i></div>
+            <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 1rem 2rem; border-radius: 50px; font-weight: 600; box-shadow: 0 4px 15px rgba(240, 147, 251, 0.3);"><i class="fa-solid fa-location-dot" style="margin-right: 0.5rem;"></i>${data.destination}</div>
         </div>
     </div>`;
-    
-    html += `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-        <div style="background: white; border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
-            <div style="font-size: 0.85rem; color: #666; text-transform: uppercase; margin-bottom: 0.5rem;">Distance</div>
-            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color);">${data.distance} KM</div>
+
+    html += `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem; margin-bottom: 3rem;">
+        <div class="glass-panel" style="padding: 2rem; text-align: center; border-radius: 24px; transition: transform 0.3s ease;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div style="width: 60px; height: 60px; background: rgba(0, 166, 81, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;">
+                <i class="fa-solid fa-route" style="font-size: 1.5rem; color: var(--primary-color);"></i>
+            </div>
+            <div style="font-size: 0.9rem; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem; font-weight: 600;">Distance</div>
+            <div style="font-size: 2rem; font-weight: 800; color: var(--primary-dark);">${data.distance} <span style="font-size: 1rem; font-weight: 500;">KM</span></div>
         </div>
-        <div style="background: white; border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
-            <div style="font-size: 0.85rem; color: #666; text-transform: uppercase; margin-bottom: 0.5rem;">Vehicle</div>
-            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color);">${data.carType}</div>
+        <div class="glass-panel" style="padding: 2rem; text-align: center; border-radius: 24px; transition: transform 0.3s ease;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div style="width: 60px; height: 60px; background: rgba(0, 166, 81, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;">
+                <i class="fa-solid fa-car" style="font-size: 1.5rem; color: var(--primary-color);"></i>
+            </div>
+            <div style="font-size: 0.9rem; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem; font-weight: 600;">Vehicle</div>
+            <div style="font-size: 2rem; font-weight: 800; color: var(--primary-dark);">${data.carType}</div>
         </div>
-        <div style="background: white; border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
-            <div style="font-size: 0.85rem; color: #666; text-transform: uppercase; margin-bottom: 0.5rem;">Consumption</div>
-            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color);">${data.consumption} km/l</div>
-        </div>
-    </div>`;
-    
-    html += `<div style="background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%); border-radius: 16px; padding: 2rem; margin-bottom: 2rem;">
-        <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem; color: #2d3748;">Fuel Calculation</h2>
-        <div style="display: grid; gap: 1rem;">
-            <div style="display: flex; justify-content: space-between; padding: 1rem; background: white; border-radius: 12px;">
-                <span style="color: #4a5568; font-weight: 500;">Fuel Needed</span>
-                <strong style="color: var(--primary-color); font-size: 1.1rem;">${data.fuelNeeded} Liters</strong>
+        <div class="glass-panel" style="padding: 2rem; text-align: center; border-radius: 24px; transition: transform 0.3s ease;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div style="width: 60px; height: 60px; background: rgba(0, 166, 81, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;">
+                <i class="fa-solid fa-gauge-high" style="font-size: 1.5rem; color: var(--primary-color);"></i>
             </div>
-            <div style="display: flex; justify-content: space-between; padding: 1rem; background: white; border-radius: 12px;">
-                <span style="color: #4a5568; font-weight: 500;">Petrol Price</span>
-                <strong style="color: var(--primary-color); font-size: 1.1rem;">PKR ${data.fuelPrice}/L</strong>
-            </div>
-            <div style="display: flex; justify-content: space-between; padding: 1rem; background: white; border-radius: 12px;">
-                <span style="color: #4a5568; font-weight: 500;">Total Cost</span>
-                <strong style="color: #d32f2f; font-size: 1.3rem;">PKR ${data.totalCost}</strong>
-            </div>
-            <div style="display: flex; justify-content: space-between; padding: 1rem; background: linear-gradient(135deg, var(--primary-color) 0%, #2d8659 100%); border-radius: 12px; color: white;">
-                <span style="font-weight: 500;">Cost Per Person (${data.travelers} travelers)</span>
-                <strong style="font-size: 1.3rem;">PKR ${data.costPerPerson}</strong>
-            </div>
+            <div style="font-size: 0.9rem; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem; font-weight: 600;">Consumption</div>
+            <div style="font-size: 2rem; font-weight: 800; color: var(--primary-dark);">${data.consumption} <span style="font-size: 1rem; font-weight: 500;">km/l</span></div>
         </div>
     </div>`;
-    
+
+    html += `<div class="glass-panel" style="padding: 3rem; border-radius: 24px; margin-bottom: 3rem; position: relative; overflow: hidden;">
+        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 5px; background: linear-gradient(90deg, var(--primary-color), var(--primary-dark));"></div>
+        <h2 style="font-size: 1.8rem; font-weight: 700; margin-bottom: 2rem; color: var(--primary-dark); display: flex; align-items: center;">
+            <i class="fa-solid fa-calculator" style="margin-right: 1rem; color: var(--primary-color);"></i>Cost Breakdown
+        </h2>
+        <div style="display: grid; gap: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; padding: 1.5rem; background: rgba(255,255,255,0.5); border-radius: 16px; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div style="width: 40px; height: 40px; background: #e8f5e9; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--primary-color);"><i class="fa-solid fa-gas-pump"></i></div>
+                    <span style="color: #4a5568; font-weight: 600; font-size: 1.1rem;">Fuel Needed</span>
+                </div>
+                <strong style="color: var(--primary-dark); font-size: 1.3rem;">${data.fuelNeeded} Liters</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 1.5rem; background: rgba(255,255,255,0.5); border-radius: 16px; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div style="width: 40px; height: 40px; background: #e8f5e9; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--primary-color);"><i class="fa-solid fa-tag"></i></div>
+                    <span style="color: #4a5568; font-weight: 600; font-size: 1.1rem;">Petrol Price</span>
+                </div>
+                <strong style="color: var(--primary-dark); font-size: 1.3rem;">PKR ${data.fuelPrice}/L</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 2rem; background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%); border: 2px solid var(--primary-color); border-radius: 20px; align-items: center; box-shadow: 0 10px 30px rgba(0, 166, 81, 0.1);">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div style="width: 50px; height: 50px; background: var(--primary-color); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.2rem;"><i class="fa-solid fa-coins"></i></div>
+                    <span style="color: var(--primary-dark); font-weight: 700; font-size: 1.3rem;">Total Cost</span>
+                </div>
+                <strong style="color: #d32f2f; font-size: 2rem; font-weight: 800;">PKR ${data.totalCost}</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 1.5rem; background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%); border-radius: 16px; color: white; align-items: center; box-shadow: 0 8px 20px rgba(0, 103, 52, 0.2);">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.2); border-radius: 10px; display: flex; align-items: center; justify-content: center;"><i class="fa-solid fa-user-group"></i></div>
+                    <span style="font-weight: 600; font-size: 1.1rem;">Cost Per Person (${data.travelers} travelers)</span>
+                </div>
+                <strong style="font-size: 1.5rem;">PKR ${data.costPerPerson}</strong>
+            </div>
+        </div>
+    </div>`;
+
     if (data.aiSuggestions) {
         const ai = data.aiSuggestions;
-        
+
         if (ai.stops && ai.stops.length > 0) {
-            html += `<div style="margin-bottom: 2rem;">
-                <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem; color: #2d3748;">Places on Route (Hotels, Dhabas, Attractions)</h2>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">`;
-            
+            html += `<div style="margin-bottom: 3rem;">
+                <h2 style="font-size: 2rem; font-weight: 800; margin-bottom: 2rem; color: var(--primary-dark); text-align: center;">
+                    <i class="fa-solid fa-map-location-dot" style="margin-right: 1rem; color: var(--primary-color);"></i>Recommended Stops
+                </h2>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; max-width: 1200px; margin: 0 auto;">`;
+
             ai.stops.slice(0, 10).forEach(stop => {
                 const stopType = stop.type || 'attraction';
                 const typeColor = stopType === 'hotel' ? '#667eea' : stopType === 'dhaba' ? '#f5576c' : '#764ba2';
-                html += `<div style="background: white; border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border-left: 4px solid ${typeColor};">
-                    <h3 style="margin: 0 0 0.5rem 0; color: #2d3748; font-size: 1.1rem;">${stop.name || 'Place'}</h3>
-                    <div style="display: inline-block; padding: 0.25rem 0.75rem; background: ${typeColor}20; color: ${typeColor}; border-radius: 20px; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.75rem;">${stopType.toUpperCase()}</div>
-                    <div style="color: #718096; font-size: 0.9rem; margin-bottom: 0.5rem;">Location: ${stop.location}</div>
-                    <div style="color: #4a5568; font-size: 0.9rem; margin-bottom: 0.5rem;">Distance from start: <strong>${stop.distance}</strong></div>
-                    <p style="color: #4a5568; font-size: 0.9rem; margin: 0.75rem 0 0 0;">${stop.description}</p>
-                    ${stop.price ? `<div style="color: var(--primary-color); font-weight: 700; margin-top: 0.75rem;">${stop.price}</div>` : ''}
+                const typeIcon = stopType === 'hotel' ? 'fa-hotel' : stopType === 'dhaba' ? 'fa-utensils' : 'fa-camera';
+
+                html += `<div class="glass-panel" style="padding: 0; border-radius: 20px; overflow: hidden; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.5);" onmouseover="this.style.transform='translateY(-10px)'; this.style.boxShadow='0 20px 40px rgba(0,0,0,0.1)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 8px 32px 0 rgba(31, 38, 135, 0.07)'">
+                    <div style="background: ${typeColor}; padding: 1.5rem 1.5rem 1rem 1.5rem; position: relative; display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
+                        <h3 style="margin: 0; color: white; font-size: 1.3rem; font-weight: 700; flex: 1;">${stop.name || 'Place'}</h3>
+                        <div style="background: rgba(255,255,255,0.2); backdrop-filter: blur(5px); padding: 0.4rem 0.8rem; border-radius: 50px; color: white; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; white-space: nowrap; flex-shrink: 0;">
+                            <i class="fa-solid ${typeIcon}" style="margin-right: 0.4rem;"></i>${stopType}
+                        </div>
+                    </div>
+                    <div style="padding: 1.5rem;">
+                        <div style="display: flex; gap: 1rem; margin-bottom: 1rem; color: #666; font-size: 0.85rem; flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fa-solid fa-location-dot" style="color: var(--primary-color); flex-shrink: 0;"></i> <span>${stop.location}</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; white-space: nowrap;">
+                                <i class="fa-solid fa-road" style="color: var(--primary-color);"></i> ${stop.distance}
+                            </div>
+                        </div>
+                        <p style="color: #4a5568; font-size: 0.95rem; line-height: 1.5; margin-bottom: 1rem; word-wrap: break-word; overflow-wrap: break-word;">${stop.description}</p>
+                        ${stop.price ? `<div style="background: #f8f9fa; padding: 0.6rem 0.9rem; border-radius: 10px; display: inline-block; font-weight: 700; color: var(--primary-color); border: 1px solid #e9ecef; font-size: 0.9rem;"><i class="fa-solid fa-tag" style="margin-right: 0.4rem;"></i>${stop.price}</div>` : ''}
+                    </div>
                 </div>`;
             });
-            
+
             html += `</div></div>`;
         }
-        
+
         if (ai.roadTips && ai.roadTips.length > 0) {
-            html += `<div style="background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%); border-radius: 16px; padding: 2rem; margin-bottom: 2rem;">
-                <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem; color: #2d3748;">Road Tips</h2>
+            html += `<div class="glass-panel" style="padding: 3rem; border-radius: 24px; margin-bottom: 3rem; background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(240,253,244,0.9) 100%);">
+                <h2 style="font-size: 1.8rem; font-weight: 800; margin-bottom: 2rem; color: var(--primary-dark); display: flex; align-items: center;">
+                    <i class="fa-solid fa-lightbulb" style="margin-right: 1rem; color: #f6e05e;"></i>Essential Road Tips
+                </h2>
                 <div style="display: grid; gap: 1rem;">`;
-            
+
             ai.roadTips.forEach(tip => {
-                html += `<div style="display: flex; gap: 1rem; padding: 1rem; background: white; border-radius: 12px;">
-                    <div style="color: var(--primary-color); font-size: 1.2rem;">+</div>
-                    <div style="color: #4a5568;">${tip}</div>
+                html += `<div style="display: flex; gap: 1.5rem; padding: 1.5rem; background: white; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s;" onmouseover="this.style.transform='translateX(5px)'" onmouseout="this.style.transform='translateX(0)'">
+                    <div style="min-width: 30px; height: 30px; background: var(--primary-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.9rem;"><i class="fa-solid fa-check"></i></div>
+                    <div style="color: #4a5568; font-size: 1.05rem; line-height: 1.5;">${tip}</div>
                 </div>`;
             });
-            
+
             html += `</div></div>`;
         }
     }
-    
+
     html += `
-        <div style="text-align: center; margin-top: 3rem; padding-top: 2rem; border-top: 2px solid #e8eaf6;">
-            <a href="plan-trip.html" class="btn btn-primary" style="display: inline-block; padding: 1rem 2.5rem; text-decoration: none; background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%); background-blend-mode: overlay; color: white; font-weight: 600; border-radius: 20px; box-shadow: 0 4px 15px rgba(0, 103, 52, 0.3); transition: all 0.3s ease;" onmouseover="this.style.boxShadow='0 6px 25px rgba(0, 103, 52, 0.4)'; this.style.transform='translateY(-2px);'" onmouseout="this.style.boxShadow='0 4px 15px rgba(0, 103, 52, 0.3)'; this.style.transform='translateY(0)';">
-                Go to AI Trip Planner
+        <div style="text-align: center; margin-top: 4rem; padding-top: 2rem; border-top: 2px solid rgba(0,0,0,0.05);">
+            <a href="plan-trip.html" class="btn btn-primary" style="display: inline-block; padding: 1rem 3rem; text-decoration: none; font-size: 1.2rem; border-radius: 50px; box-shadow: 0 10px 30px rgba(0, 103, 52, 0.3); transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 15px 40px rgba(0, 103, 52, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 10px 30px rgba(0, 103, 52, 0.3)'">
+                <i class="fa-solid fa-wand-magic-sparkles" style="margin-right: 0.75rem;"></i>Plan Your Full Trip with AI
             </a>
         </div>
     </div>`;

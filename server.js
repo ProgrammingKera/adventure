@@ -14,8 +14,8 @@ app.use(express.json());
 app.use(express.static('public'));
 app.use(express.urlencoded({ extended: true }));
 
-// Multer configuration for file uploads
-const upload = multer({ dest: 'uploads/' });
+// Multer configuration for file uploads - use memory storage to avoid saving files
+const upload = multer({ storage: multer.memoryStorage() });
 
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
@@ -140,21 +140,21 @@ Return ONLY valid JSON with this exact structure:
     if (!response.data || !response.data.choices || !response.data.choices[0]) {
       throw new Error('Invalid response from AI service');
     }
-    
+
     let rawResponse = response.data.choices[0].message.content;
-    
+
     if (!rawResponse || rawResponse.trim().length === 0) {
       throw new Error('Empty plan generated');
     }
-    
+
     // Save the raw response
     const rawResponseText = rawResponse.trim();
-    
-    
-    
+
+
+
     // Extract JSON from response - handle various formats
     let generatedPlan = rawResponseText;
-    
+
     // Remove markdown code blocks
     if (generatedPlan.includes('```json')) {
       const jsonMatch = generatedPlan.match(/```json\s*([\s\S]*?)\s*```/);
@@ -167,7 +167,7 @@ Return ONLY valid JSON with this exact structure:
         generatedPlan = jsonMatch[1].trim();
       }
     }
-    
+
     // Try multiple extraction strategies
     const extractionStrategies = [
       // Strategy 1: Direct JSON object
@@ -191,7 +191,7 @@ Return ONLY valid JSON with this exact structure:
         return null;
       }
     ];
-    
+
     let extractedJson = null;
     for (const strategy of extractionStrategies) {
       try {
@@ -206,17 +206,17 @@ Return ONLY valid JSON with this exact structure:
         continue;
       }
     }
-    
-    
-    
+
+
+
     // Try to parse as JSON with multiple strategies
     let planData;
     let parseSuccess = false;
-    
+
     // Strategy 1: Direct parse
     try {
       planData = JSON.parse(generatedPlan);
-      
+
       // Transform to frontend expected format
       if (planData.trip) {
         const transformedPlan = {
@@ -235,10 +235,10 @@ Return ONLY valid JSON with this exact structure:
         };
         planData = transformedPlan;
       }
-      
+
       parseSuccess = true;
     } catch (parseError) {
-      
+
       // Strategy 2: Repair JSON with common fixes
       try {
         const repairedPlan = repairJSON(generatedPlan);
@@ -261,7 +261,7 @@ Return ONLY valid JSON with this exact structure:
         }
         parseSuccess = true;
       } catch (fixError) {
-        
+
         // Strategy 3: Try to find and extract the largest valid JSON object
         try {
           // Find all potential JSON objects
@@ -285,10 +285,10 @@ Return ONLY valid JSON with this exact structure:
         } catch (extractError) {
           // Silent fail, try next strategy
         }
-        
+
         // Strategy 4: Last resort - send raw response for frontend to handle
         if (!parseSuccess) {
-          planData = { 
+          planData = {
             rawResponse: rawResponseText,
             needsFrontendParsing: true,
             parseError: parseError.message
@@ -296,12 +296,12 @@ Return ONLY valid JSON with this exact structure:
         }
       }
     }
-    
+
     // Always include raw response for frontend fallback
     if (planData && !planData.rawResponse) {
       planData.rawResponse = rawResponseText;
     }
-    
+
     // If parsing failed, create a basic structure with raw response
     if (!parseSuccess || !planData) {
       planData = {
@@ -318,18 +318,18 @@ Return ONLY valid JSON with this exact structure:
         needsFrontendParsing: true
       };
     }
-    
-    
-    
-    res.json({ 
-      success: true, 
-      plan: planData 
+
+
+
+    res.json({
+      success: true,
+      plan: planData
     });
   } catch (error) {
     console.error('Error generating trip plan:', error.response?.data || error.message);
     const errorMessage = error.response?.data?.error?.message || error.message || 'Failed to generate trip plan. Please try again.';
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       error: errorMessage
     });
   }
@@ -347,17 +347,17 @@ app.get('/api/predict-image', (req, res) => {
 app.post('/api/predict-image', upload.single('image'), async (req, res) => {
   const start = Date.now();
   try {
-    
+
 
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'No image file provided' });
     }
 
     const FormData = require('form-data');
-    const fs = require('fs');
     const formData = new FormData();
-    
-    formData.append('image', fs.createReadStream(req.file.path), {
+
+    // Use buffer since we are using memory storage
+    formData.append('image', req.file.buffer, {
       filename: req.file.originalname || 'image.jpg',
       contentType: req.file.mimetype
     });
@@ -372,18 +372,10 @@ app.post('/api/predict-image', upload.single('image'), async (req, res) => {
       }
     );
 
-    // Clean up uploaded file
-    fs.unlinkSync(req.file.path);
+    // No need to unlink file as it is in memory
 
-    
     return res.json({ success: true, prediction: response.data });
   } catch (error) {
-    const fs = require('fs');
-    // Clean up uploaded file if it exists
-    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
-
     const status = error.response?.status || 500;
     const apiText = typeof error.response?.data === 'string' ? error.response.data : undefined;
     const apiJson = typeof error.response?.data === 'object' ? error.response.data : undefined;

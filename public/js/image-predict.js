@@ -7,16 +7,19 @@ onAuthStateChanged(auth, (user) => {
     if (!isAuthChecked) {
         isAuthChecked = true;
         const loginMessageContainer = document.getElementById('login-message-container');
-        const formContainer = document.querySelector('.form-container');
-        
+        const mainContent = document.getElementById('main-content');
+        const loader = document.getElementById('page-loader');
+
+        if (loader) loader.style.display = 'none';
+
         if (!user) {
             // Show login message, hide form
             if (loginMessageContainer) loginMessageContainer.style.display = 'block';
-            if (formContainer) formContainer.style.display = 'none';
+            if (mainContent) mainContent.style.display = 'none';
         } else {
             // User is logged in - show form
             if (loginMessageContainer) loginMessageContainer.style.display = 'none';
-            if (formContainer) formContainer.style.display = 'block';
+            if (mainContent) mainContent.style.display = 'block';
         }
     }
 });
@@ -45,7 +48,7 @@ uploadArea.addEventListener('dragleave', () => {
 uploadArea.addEventListener('drop', (e) => {
     e.preventDefault();
     uploadArea.classList.remove('dragover');
-    
+
     const files = e.dataTransfer.files;
     if (files.length > 0 && files[0].type.startsWith('image/')) {
         handleImageFile(files[0]);
@@ -61,14 +64,14 @@ imageInput.addEventListener('change', (e) => {
 
 function handleImageFile(file) {
     const reader = new FileReader();
-    
+
     reader.onload = (e) => {
         previewImage.src = e.target.result;
         previewImage.classList.remove('hidden');
         predictButton.classList.remove('hidden');
         predictionResult.classList.add('hidden');
     };
-    
+
     reader.readAsDataURL(file);
 }
 
@@ -78,10 +81,10 @@ predictButton.addEventListener('click', async () => {
         alert('Please select an image first');
         return;
     }
-    
+
     const formData = new FormData();
     formData.append('image', imageInput.files[0]);
-    
+
     predictButton.disabled = true;
     predictButton.textContent = 'Predicting...';
     predictionResult.classList.remove('hidden');
@@ -103,43 +106,43 @@ predictButton.addEventListener('click', async () => {
             </div>
         `;
     }
-    
+
     try {
         const response = await fetch('/api/predict-image', {
             method: 'POST',
             body: formData
         });
-        
+
         const data = await response.json();
-        
+
         if (data.success) {
             console.log('[predict-image] full response', data);
             let p = data.prediction;
-            
+
             // Helper function to escape HTML
             const escapeHtml = (text) => {
                 const div = document.createElement('div');
                 div.textContent = text;
                 return div.innerHTML;
             };
-            
+
             // Extract description from response
             let descriptionText = '';
             if (typeof p === 'string') {
                 descriptionText = p;
             } else if (p && typeof p === 'object') {
                 // Try to find description in various possible fields
-                descriptionText = p.description || p.details || p.summary || p.text || p.content || 
-                                 p.message || p.info || p.response || JSON.stringify(p, null, 2);
+                descriptionText = p.description || p.details || p.summary || p.text || p.content ||
+                    p.message || p.info || p.response || JSON.stringify(p, null, 2);
             } else if (Array.isArray(p) && p.length > 0) {
                 // If array, try to get description from first item or stringify
-                descriptionText = (p[0] && typeof p[0] === 'object') 
+                descriptionText = (p[0] && typeof p[0] === 'object')
                     ? (p[0].description || p[0].details || JSON.stringify(p, null, 2))
                     : JSON.stringify(p, null, 2);
             } else {
                 descriptionText = String(p || 'No description available');
             }
-            
+
             // Format the description nicely - preserve line breaks
             // Split by newlines, escape each part, then join with <br>
             const lines = descriptionText.split(/\n/);
@@ -152,7 +155,7 @@ predictButton.addEventListener('click', async () => {
                 predictionResult.innerHTML = `<div id="prediction-card" class="card" style="margin-top: 1.5rem;"></div>`;
                 card = document.getElementById('prediction-card');
             }
-            
+
             const html = `
                 <h3 style="display:flex; align-items:center; gap:.5rem; margin-top:0; color:var(--primary-color);">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -206,4 +209,3 @@ onAuthStateChanged(auth, (user) => {
         profileLink.textContent = 'Profile';
     }
 });
-

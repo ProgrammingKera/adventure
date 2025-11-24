@@ -1,138 +1,56 @@
 import { db, auth } from '../firebase.js';
-import { collection, getDocs, query, where, doc, getDoc, updateDoc, increment, addDoc, serverTimestamp, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import {
+    collection,
+    addDoc,
+    serverTimestamp,
+    doc,
+    getDoc,
+    getDocs,
+    updateDoc,
+    increment
+} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
-// Check if user is logged in
-let isAuthChecked = false;
-onAuthStateChanged(auth, (user) => {
-    if (!isAuthChecked) {
-        isAuthChecked = true;
-        const loginMessageContainer = document.getElementById('login-message-container');
-        const exploreLayout = document.querySelector('.explore-layout');
-        const exploreTabs = document.getElementById('explore-tabs');
-        
-        if (!user) {
-            // Show login message, hide explore layout
-            if (loginMessageContainer) loginMessageContainer.style.display = 'block';
-            if (exploreLayout) exploreLayout.style.display = 'none';
-            if (exploreTabs) exploreTabs.style.display = 'none';
-        } else {
-            // User is logged in - show explore layout
-            if (loginMessageContainer) loginMessageContainer.style.display = 'none';
-            if (exploreLayout) exploreLayout.style.display = 'flex';
-            if (exploreTabs) exploreTabs.style.display = 'flex';
-            // Load data for logged in user
-            loadDestinations();
-        }
-    }
-});
-
-// Navigation state
-let currentView = 'cities'; // 'cities', 'agencies', 'trips'
+// Global variables for data storage
+let allAgencies = [];
+let allTrips = [];
+let agenciesByCity = {};
+let currentView = 'cities';
 let selectedCity = null;
 let selectedAgency = null;
-let allTrips = [];
-let allAgencies = [];
 
-// Shared date parser for both loaders and renderers
-function parseTripDate(dateVal) {
-    if (!dateVal) return null;
-    if (typeof dateVal?.toDate === 'function') return dateVal.toDate();
-    if (typeof dateVal === 'string') {
-        let s = dateVal
-            .replace(/\sUTC[+-]\d+$/i, ' ')
-            .replace(/\sat\s/i, ' ')
-            .replace(/,/g, ' ')
-            .replace(/\s+/g, ' ')
-            .trim();
-        const d = new Date(s);
-        return isNaN(d.getTime()) ? null : d;
-    }
-    const d = new Date(dateVal);
-    return isNaN(d.getTime()) ? null : d;
-}
-
-// Load all data
+// Load destinations
 async function loadDestinations() {
     try {
         const citiesContainer = document.getElementById('cities-container');
-        
-        // Get all trips
-        const tripsRef = collection(db, 'trips');
-        const tripsSnapshot = await getDocs(tripsRef);
-        
-        // Get all agencies
-        const agenciesRef = collection(db, 'agencies');
-        const agenciesSnapshot = await getDocs(agenciesRef);
-        
-        // Store agencies globally
-        allAgencies = [];
-        const agenciesMap = {};
-        agenciesSnapshot.forEach(doc => {
-            const agency = { id: doc.id, ...doc.data() };
-            agenciesMap[doc.id] = agency;
-            allAgencies.push(agency);
-        });
-        
-        const today = new Date();
-        const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-        // Background-migrate: convert string dates to Timestamp for mobile app compatibility
-        (async () => {
-            try {
-                await Promise.all(tripsSnapshot.docs.map(async (d) => {
-                    const data = d.data();
-                    const updates = {};
+        // Fetch all agencies
+        const agenciesSnapshot = await getDocs(collection(db, 'agencies'));
+        allAgencies = agenciesSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
 
-                    // Convert string date to Timestamp
-                    if (data && typeof data.date === 'string') {
-                        const parsed = parseTripDate(data.date);
-                        if (parsed) {
-                            updates.date = Timestamp.fromDate(parsed);
-                            updates.dateTimestamp = parsed.getTime();
-                        }
-                    }
-
-                    // Add dateTimestamp if missing (for existing Timestamp dates)
-                    if (data && data.date?.toDate && !data.dateTimestamp) {
-                        const dateObj = data.date.toDate();
-                        updates.dateTimestamp = dateObj.getTime();
-                    }
-
-                    // Ensure location fields for mobile compatibility
-                    if (data && data.location) {
-                        const locationStr = String(data.location).trim();
-                        const locationLower = locationStr.toLowerCase();
-                        updates.locationNormalized = locationLower;
-                        updates.city = locationStr;
-                        updates.cityLower = locationLower;
-                    }
-
-                    // Apply updates if any
-                    if (Object.keys(updates).length > 0) {
-                        try {
-                            await updateDoc(doc(db, 'trips', d.id), updates);
-                        } catch (_) {}
-                    }
-                }));
-            } catch (_) {}
-        })();
-
-        // Store trips globally
-        allTrips = [];
-        tripsSnapshot.forEach(doc => {
-            const trip = doc.data();
-            const d = parseTripDate(trip.date);
-            allTrips.push({
+        // Fetch all trips
+        const tripsSnapshot = await getDocs(collection(db, 'trips'));
+        allTrips = tripsSnapshot.docs.map(doc => {
+            const data = doc.data();
+            // Parse date if it exists
+            if (data.departureDate) {
+                try {
+                    data._parsedDate = new Date(data.departureDate);
+                } catch (e) {
+                    data._parsedDate = null;
+                }
+            }
+            return {
                 id: doc.id,
-                ...trip,
-                _parsedDate: d,
-                agency: agenciesMap[trip.agencyId]
-            });
+                ...data
+            };
         });
-        
-        // Group agencies by their location
-        const agenciesByCity = {};
+
+        // Build cities map
+        agenciesByCity = {};
         allAgencies.forEach(agency => {
             const city = String(agency.location || 'Other').trim();
             if (!agenciesByCity[city]) {
@@ -140,7 +58,7 @@ async function loadDestinations() {
             }
             agenciesByCity[city].push(agency);
         });
-        
+
         // Build list of cities with agency count
         const cityEntries = Object.entries(agenciesByCity)
             .map(([city, agencies]) => ({ city, count: agencies.length }))
@@ -150,10 +68,9 @@ async function loadDestinations() {
             citiesContainer.innerHTML = '<p style="padding:1rem; color: var(--text-light);">No destinations available yet.</p>';
             return;
         }
-        
+
         // Render cities
         renderCities(cityEntries);
-        
     } catch (error) {
         console.error('Error loading destinations:', error);
         document.getElementById('cities-container').innerHTML = `
@@ -164,30 +81,16 @@ async function loadDestinations() {
     }
 }
 
+
 // Update tabs
 function updateTabs(view) {
     // Update tab buttons
     document.querySelectorAll('.explore-tab').forEach(tab => {
         tab.classList.remove('active');
     });
-    
+
     const activeTab = document.querySelector(`[data-view="${view}"]`);
     if (activeTab) activeTab.classList.add('active');
-    
-    // Show/hide tabs based on view
-    if (view === 'cities') {
-        document.getElementById('tab-cities').style.display = 'flex';
-        document.getElementById('tab-agencies').style.display = 'none';
-        document.getElementById('tab-trips').style.display = 'none';
-    } else if (view === 'agencies') {
-        document.getElementById('tab-cities').style.display = 'flex';
-        document.getElementById('tab-agencies').style.display = 'flex';
-        document.getElementById('tab-trips').style.display = 'none';
-    } else if (view === 'trips') {
-        document.getElementById('tab-cities').style.display = 'flex';
-        document.getElementById('tab-agencies').style.display = 'flex';
-        document.getElementById('tab-trips').style.display = 'flex';
-    }
 }
 
 // Scroll to main content (for mobile)
@@ -203,37 +106,42 @@ function renderCities(cityEntries) {
     currentView = 'cities';
     selectedCity = null;
     selectedAgency = null;
-    
+
     // Update tabs
     updateTabs('cities');
-    
+
     // Hide agency info
     showAgencyInfo(null);
-    
+
     // Show cities, hide agencies
-    document.getElementById('cities-container').style.display = 'block';
+    document.getElementById('cities-container').style.display = 'flex'; // Changed to flex for column layout
     document.getElementById('agencies-container').style.display = 'none';
-    
+
     const citiesContainer = document.getElementById('cities-container');
     citiesContainer.innerHTML = cityEntries.map((item, idx) => `
-        <div class="city-card" data-city="${item.city}">
-            <div class="city-name">${item.city}</div>
-            <div class="city-meta">${item.count} ${item.count === 1 ? 'agency' : 'agencies'}</div>
+        <div class="list-card" data-city="${item.city}">
+            <div class="list-name">${item.city}</div>
+            <div class="list-meta">${item.count} ${item.count === 1 ? 'agency' : 'agencies'}</div>
         </div>
     `).join('');
-    
+
     // Update content area
     document.getElementById('content-title').textContent = 'Select a City';
-    document.getElementById('content-area').innerHTML = '<p style="color: var(--text-light); text-align: center; padding: 2rem;">Choose a city to explore travel agencies</p>';
-    
+    document.getElementById('content-area').innerHTML = `
+        <div class="empty-state">
+            <i class="fa-solid fa-earth-americas"></i>
+            <p>Choose a city to explore travel agencies</p>
+        </div>
+    `;
+
     // Attach click handlers
-    document.querySelectorAll('.city-card').forEach(card => {
+    document.querySelectorAll('.list-card').forEach(card => {
         card.addEventListener('click', () => {
             // Remove active from all
-            document.querySelectorAll('.city-card').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.list-card').forEach(c => c.classList.remove('active'));
             // Add active to clicked
             card.classList.add('active');
-            
+
             const city = card.getAttribute('data-city');
             showAgenciesForCity(city);
         });
@@ -245,45 +153,45 @@ function showAgenciesForCity(city) {
     currentView = 'agencies';
     selectedCity = city;
     selectedAgency = null;
-    
+
     // Update tabs
     updateTabs('agencies');
     const tabAgenciesLabel = document.getElementById('tab-agencies-label');
     if (tabAgenciesLabel) tabAgenciesLabel.textContent = city;
-    
+
     // Scroll to content on mobile
     scrollToContent();
-    
+
     // Get agencies in this city (by agency location)
     const cityAgencies = allAgencies.filter(a => String(a.location || '').trim() === city);
-    
+
     // Count trips per agency
     const agenciesWithCount = cityAgencies.map(agency => {
         const count = allTrips.filter(t => t.agencyId === agency.id).length;
         return { ...agency, tripCount: count };
     }).sort((a, b) => b.tripCount - a.tripCount);
-    
+
     // Hide agency info when showing agencies list
     showAgencyInfo(null);
-    
+
     // Hide cities, show agencies
     document.getElementById('cities-container').style.display = 'none';
-    document.getElementById('agencies-container').style.display = 'block';
-    
+    document.getElementById('agencies-container').style.display = 'flex'; // Changed to flex
+
     const agenciesContainer = document.getElementById('agencies-container');
-    agenciesContainer.className = 'city-grid';
-    
+    agenciesContainer.className = 'explore-list-grid'; // Updated class
+
     if (agenciesWithCount.length === 0) {
         agenciesContainer.innerHTML = '<p style="padding:1rem; color: var(--text-light);">No agencies found for this city.</p>';
         document.getElementById('content-area').innerHTML = '';
         return;
     }
-    
+
     agenciesContainer.innerHTML = agenciesWithCount.map(agency => `
-        <div class="city-card" data-agency-id="${agency.id}">
-            <div class="city-name">${agency.name || 'Agency'}</div>
-            <div class="city-meta" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                <span>${agency.tripCount} ${agency.tripCount === 1 ? 'trip' : 'trips'}</span>
+        <div class="list-card" data-agency-id="${agency.id}">
+            <div class="list-name">${agency.name || 'Agency'}</div>
+            <div class="list-meta" style="display: flex; gap: 0.5rem; align-items: center;">
+                <span>${agency.tripCount} trips</span>
                 ${agency.rating ? `<span style="color: #FFA500;">★ ${Number(agency.rating).toFixed(1)}</span>` : ''}
             </div>
         </div>
@@ -291,11 +199,20 @@ function showAgenciesForCity(city) {
 
     // Update content area
     document.getElementById('content-title').textContent = `${city} Agencies`;
-    document.getElementById('content-area').innerHTML = '<p style="color: var(--text-light); text-align: center; padding: 2rem;">Click on an agency to view their trips</p>';
+    document.getElementById('content-area').innerHTML = `
+        <div class="empty-state">
+            <i class="fa-solid fa-shop"></i>
+            <p>Click on an agency to view their trips</p>
+        </div>
+    `;
 
     // Attach click handlers
     document.querySelectorAll('[data-agency-id]').forEach(card => {
         card.addEventListener('click', () => {
+            // Highlight selected agency
+            document.querySelectorAll('.list-card').forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
+
             const agencyId = card.getAttribute('data-agency-id');
             const agency = allAgencies.find(a => a.id === agencyId);
             showTripsForAgency(city, agency);
@@ -307,23 +224,23 @@ function showAgenciesForCity(city) {
 function showTripsForAgency(city, agency) {
     currentView = 'trips';
     selectedAgency = agency;
-    
+
     // Update tabs
     updateTabs('trips');
     document.getElementById('tab-trips-label').textContent = agency.name || 'Trips';
-    
+
     // Scroll to content on mobile
     scrollToContent();
-    
+
     // Filter trips for this agency
     const trips = allTrips.filter(t => t.agencyId === agency.id);
-    
+
     // Update content
     document.getElementById('content-title').textContent = '';
-    
+
     // Show agency info
     showAgencyInfo(agency);
-    
+
     // Render trips
     renderTrips(trips);
 }
@@ -331,13 +248,18 @@ function showTripsForAgency(city, agency) {
 // Render trips
 function renderTrips(trips) {
     const container = document.getElementById('content-area');
-    
+
     if (!trips || trips.length === 0) {
-        container.innerHTML = '<p style="color: var(--text-light); text-align: center; padding: 2rem;">No trips available.</p>';
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fa-solid fa-suitcase-rolling"></i>
+                <p>No trips available for this agency yet.</p>
+            </div>
+        `;
         return;
     }
-    
-    
+
+
     // Sort trips
     const today = new Date();
     const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -353,7 +275,7 @@ function renderTrips(trips) {
         if (!db) return -1;
         return ga === 0 ? da - db : db - da;
     });
-    
+
     container.innerHTML = sorted.map(trip => {
         const availableSeats = Math.max(0, (trip.totalSeats || 0) - (trip.bookedSeats || 0));
         const d = trip._parsedDate;
@@ -406,49 +328,49 @@ if (breadcrumbCity) {
 }
 
 // Global function for booking
-window.bookTrip = async function(tripId) {
+window.bookTrip = async function (tripId) {
     const user = auth.currentUser;
     if (!user) {
         alert('Please login to book a trip');
         window.location.href = 'profile.html';
         return;
     }
-    
+
     try {
         // Get trip details
         const tripDoc = await getDoc(doc(db, 'trips', tripId));
-        
+
         if (!tripDoc.exists()) {
             alert('Trip not found');
             return;
         }
-        
+
         const trip = tripDoc.data();
         const availableSeats = (trip.totalSeats || 0) - (trip.bookedSeats || 0);
-        
+
         if (availableSeats <= 0) {
             alert('Sorry, this trip is fully booked.');
             return;
         }
-        
+
         const seatsInput = prompt(`How many seats would you like to book? (Available: ${availableSeats})`);
         if (!seatsInput) return;
-        
+
         const seatsToBook = parseInt(seatsInput);
         if (isNaN(seatsToBook) || seatsToBook <= 0) {
             alert('Please enter a valid number of seats');
             return;
         }
-        
+
         if (seatsToBook > availableSeats) {
             alert(`Only ${availableSeats} seat(s) available.`);
             return;
         }
-        
+
         // Get user details
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         const userData = userDoc.exists() ? userDoc.data() : {};
-        
+
         // Create booking
         await addDoc(collection(db, 'bookings'), {
             tripId: tripId,
@@ -460,14 +382,14 @@ window.bookTrip = async function(tripId) {
             seatsBooked: seatsToBook,
             createdAt: serverTimestamp()
         });
-        
+
         // Update trip booked seats
         await updateDoc(doc(db, 'trips', tripId), {
             bookedSeats: increment(seatsToBook)
         });
-        
+
         alert(`Successfully booked ${seatsToBook} seat(s)!`);
-        
+
         // Reload destinations to update seat counts
         loadDestinations();
     } catch (error) {
@@ -476,26 +398,38 @@ window.bookTrip = async function(tripId) {
     }
 };
 
-// Check auth state
+// Check auth state and show content
 onAuthStateChanged(auth, (user) => {
+    const mainContent = document.getElementById('main-content');
+    const loginContainer = document.getElementById('login-message-container');
+    const heroSection = document.getElementById('explore-hero-section');
+    const loader = document.getElementById('page-loader');
+
+    if (loader) loader.style.display = 'none';
+
     if (user) {
-        const profileLink = document.getElementById('profile-link');
-        if (profileLink) {
-            profileLink.textContent = 'Profile';
-        }
+        // User is logged in - show main content
+        if (mainContent) mainContent.style.display = 'block';
+        if (heroSection) heroSection.style.display = 'block';
+        if (loginContainer) loginContainer.style.display = 'none';
+    } else {
+        // User not logged in - show login message
+        if (mainContent) mainContent.style.display = 'none';
+        if (heroSection) heroSection.style.display = 'none';
+        if (loginContainer) loginContainer.style.display = 'block';
     }
 });
 
 // Show agency info in dedicated section
 function showAgencyInfo(agency) {
     const agencyInfoSection = document.getElementById('agency-info-section');
-    
+
     if (!agency) {
         agencyInfoSection.style.display = 'none';
         agencyInfoSection.innerHTML = '';
         return;
     }
-    
+
     agencyInfoSection.style.display = 'block';
     agencyInfoSection.innerHTML = `
         <div style="background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%); border: 1px solid #e8eaf6; border-radius: 16px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 20px rgba(0,0,0,0.08); transition: all 0.3s ease;">
@@ -550,45 +484,45 @@ function showAgencyInfo(agency) {
 }
 
 // Show agency details in explore page
-window.showAgencyDetailsInExplore = async function(agencyId) {
+window.showAgencyDetailsInExplore = async function (agencyId) {
     try {
         const agency = allAgencies.find(a => a.id === agencyId);
-        
+
         if (!agency) {
             alert('Agency not found');
             return;
         }
-        
+
         // Create modal HTML
-        // const modalHTML = `
-        //     <div id="agency-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000;" onclick="if(event.target.id==='agency-modal') this.remove();">
-        //         <div style="background: white; padding: 2rem; border-radius: 8px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;" onclick="event.stopPropagation();">
-        //             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        //                 <h2 style="margin: 0; color: var(--text-dark);">${agency.name || 'Agency'}</h2>
-        //                 <button onclick="document.getElementById('agency-modal').remove()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-light);">&times;</button>
-        //             </div>
-        //             ${agency.rating ? `<div style="color: #FFA500; margin-bottom: 1rem; font-size: 1.2rem;">★ ${Number(agency.rating).toFixed(1)} Rating</div>` : ''}
-        //             ${agency.description ? `<div style="margin-bottom: 1rem; color: var(--text-light); line-height: 1.6;">${agency.description}</div>` : ''}
-        //             <div style="margin-top: 1.5rem;">
-        //                 <strong style="color: var(--text-dark);">Contact Information:</strong>
-        //                 ${agency.phone ? `<div style="margin-top: 0.5rem; color: var(--text-light);">📞 ${agency.phone}</div>` : ''}
-        //                 ${agency.email ? `<div style="margin-top: 0.5rem; color: var(--text-light);">📧 ${agency.email}</div>` : ''}
-        //                 ${agency.location ? `<div style="margin-top: 0.5rem; color: var(--text-light);">📍 ${agency.location}</div>` : ''}
-        //             </div>
-        //             <div style="margin-top: 1.5rem; text-align: center;">
-        //                 <button onclick="document.getElementById('agency-modal').remove()" class="btn btn-primary">Close</button>
-        //             </div>
-        //         </div>
-        //     </div>
-        // `;
-        
+        const modalHTML = `
+            <div id="agency-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000;" onclick="if(event.target.id==='agency-modal') this.remove();">
+                <div style="background: white; padding: 2rem; border-radius: 8px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;" onclick="event.stopPropagation();">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h2 style="margin: 0; color: var(--text-dark);">${agency.name || 'Agency'}</h2>
+                        <button onclick="document.getElementById('agency-modal').remove()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-light);">&times;</button>
+                    </div>
+                    ${agency.rating ? `<div style="color: #FFA500; margin-bottom: 1rem; font-size: 1.2rem;">★ ${Number(agency.rating).toFixed(1)} Rating</div>` : ''}
+                    ${agency.description ? `<div style="margin-bottom: 1rem; color: var(--text-light); line-height: 1.6;">${agency.description}</div>` : ''}
+                    <div style="margin-top: 1.5rem;">
+                        <strong style="color: var(--text-dark);">Contact Information:</strong>
+                        ${agency.phone ? `<div style="margin-top: 0.5rem; color: var(--text-light);">📞 ${agency.phone}</div>` : ''}
+                        ${agency.email ? `<div style="margin-top: 0.5rem; color: var(--text-light);">📧 ${agency.email}</div>` : ''}
+                        ${agency.location ? `<div style="margin-top: 0.5rem; color: var(--text-light);">📍 ${agency.location}</div>` : ''}
+                    </div>
+                    <div style="margin-top: 1.5rem; text-align: center;">
+                        <button onclick="document.getElementById('agency-modal').remove()" class="btn btn-primary">Close</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
         // Remove existing modal if any
         const existingModal = document.getElementById('agency-modal');
         if (existingModal) existingModal.remove();
-        
+
         // Add modal to body
         document.body.insertAdjacentHTML('beforeend', modalHTML);
-        
+
     } catch (error) {
         console.error('Error loading agency details:', error);
         alert('Failed to load agency details');
@@ -600,7 +534,7 @@ function handleURLParameters() {
     const urlParams = new URLSearchParams(window.location.search);
     const city = urlParams.get('city');
     const agencyId = urlParams.get('agency');
-    
+
     if (city && agencyId) {
         // Wait for data to load then navigate
         setTimeout(() => {
@@ -622,7 +556,7 @@ function handleURLParameters() {
 function initTabHandlers() {
     const tabCities = document.getElementById('tab-cities');
     const tabAgencies = document.getElementById('tab-agencies');
-    
+
     if (tabCities) {
         tabCities.addEventListener('click', () => {
             if (currentView !== 'cities') {
@@ -640,7 +574,7 @@ function initTabHandlers() {
             }
         });
     }
-    
+
     if (tabAgencies) {
         tabAgencies.addEventListener('click', () => {
             if (currentView === 'trips' && selectedCity) {
@@ -652,8 +586,13 @@ function initTabHandlers() {
 }
 
 // Initialize page
-loadDestinations().then(() => {
-    initTabHandlers();
-    handleURLParameters();
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        // Only load destinations if user is logged in
+        loadDestinations().then(() => {
+            initTabHandlers();
+            handleURLParameters();
+        });
+    }
 });
 

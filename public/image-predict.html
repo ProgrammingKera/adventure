@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,18 +10,17 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
 </head>
-<body>
+
+<body style="font-family: 'Outfit', sans-serif;">
     <header>
         <nav class="navbar">
             <a href="index.html" class="logo" aria-label="AI Trip Planner">
-                <img src="assets/inlogo.png" alt="AI Trip Planner Logo" class="logo-img">
+                <img src="/assets/inlogo.png" alt="AI Trip Planner Logo" class="logo-img">
             </a>
-<button class="mobile-menu-toggle" aria-label="Toggle menu">
+            <button class="mobile-menu-toggle" aria-label="Toggle menu">
                 <span></span>
                 <span></span>
                 <span></span>
@@ -30,112 +30,144 @@
                 <li><a class="nav-link" href="image-predict.html">Image Predict</a></li>
                 <li><a class="nav-link" href="plan-trip.html">AI Plan Trip</a></li>
                 <li><a class="nav-link" href="explore.html">Explore</a></li>
-                <li id="my-bookings-nav" style="display: none;"><a class="nav-link" href="my-bookings.html">My Bookings</a></li>
-                
-                
+                <li id="my-bookings-nav" style="display: none;"><a class="nav-link" href="my-bookings.html">My
+                        Bookings</a></li>
                 <li><a class="nav-link" href="profile.html">Profile</a></li>
-                
             </ul>
             <a id="auth-btn" class="btn small btn-secondary auth-cta">Login</a>
         </nav>
     </header>
 
-    <div class="container">
-        <section class="section">
-            <h2 class="section-title">AI Image Prediction</h2>
-            <p style="text-align: center; color: var(--text-light); margin-bottom: 2rem;">
-                Upload a photo of a tourist place in Pakistan and discover information about it
-            </p>
-
-            <!-- Login Required Message -->
-            <div id="login-message-container" style="display: none; text-align: center; padding: 3rem 2rem;">
-                <div class="alert alert-error" style="text-align: center; padding: 2rem;">
-                    <h3 style="margin-bottom: 1rem; color: var(--primary-color);">Login Required</h3>
-                    <p style="margin-bottom: 1.5rem; color: #666;">Please login to use the Image Prediction feature.</p>
-                    <a href="login.html" class="btn btn-primary" style="display: inline-block; padding: 0.75rem 2rem; text-decoration: none;">Go to Login</a>
-                </div>
+    <div id="login-message-container" style="display: none; padding-top: 150px; text-align: center; min-height: 60vh;">
+        <div class="container">
+            <div class="glass-panel" style="padding: 3rem; max-width: 600px; margin: 0 auto; border-radius: 24px;">
+                <i class="fa-solid fa-lock"
+                    style="font-size: 3rem; color: var(--primary-color); margin-bottom: 1.5rem;"></i>
+                <h2 style="margin-bottom: 1rem;">Login Required</h2>
+                <p style="color: var(--text-light); margin-bottom: 2rem;">Please login to use the AI Image Prediction
+                    feature.</p>
+                <a href="login.html" class="btn btn-primary">Login Now</a>
             </div>
-            
-            <div class="form-container">
-                <div class="image-upload-container">
-                    <div class="upload-area" id="upload-area">
-                        <div style="display:flex; align-items:center; gap:.6rem; justify-content:center; margin-bottom:.5rem;">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                                <path d="M4 7h3l2-3h6l2 3h3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z" stroke="#006734" stroke-width="1.5"/>
-                                <circle cx="12" cy="13" r="3.5" stroke="#006734" stroke-width="1.5"/>
-                            </svg>
-                            <p style="font-size: 1.1rem; margin:0; font-weight:700; color: var(--primary-color);">Upload Image</p>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="page-loader" style="min-height: 80vh; display: flex; align-items: center; justify-content: center;">
+        <div style="text-align: center; color: var(--primary-color);">
+            <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 3rem;"></i>
+            <p style="margin-top: 1rem; font-weight: 500;">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Main Content Wrapper -->
+    <div id="main-content" style="display: none;">
+        <!-- Hero Section -->
+        <div class="hero-section"
+            style="background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-color) 100%); padding: 4rem 0 3rem; text-align: center; color: white; position: relative; overflow: hidden;">
+            <div
+                style="position: absolute; top: -50px; left: -50px; width: 300px; height: 300px; border-radius: 50%; background: rgba(255,255,255,0.05);">
+            </div>
+            <div
+                style="position: absolute; bottom: -100px; right: -100px; width: 400px; height: 400px; border-radius: 50%; background: rgba(255,255,255,0.03);">
+            </div>
+            <div class="container" style="position: relative; z-index: 1;">
+                <h1
+                    style="font-size: 3rem; font-weight: 800; margin-bottom: 1rem; text-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                    Discover Pakistan with AI Vision
+                </h1>
+                <p style="font-size: 1.3rem; opacity: 0.95; max-width: 600px; margin: 0 auto 1.5rem;">
+                    Upload a photo of any landmark in Pakistan, and our AI will identify it and help you plan a trip
+                    there.
+                </p>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="container" style="padding: 3rem 0;">
+            <div class="glass-panel" style="max-width: 900px; margin: 0 auto; padding: 3rem; border-radius: 24px;">
+
+                <div id="upload-area" class="upload-area">
+                    <input type="file" id="image-input" accept="image/*" hidden>
+                    <div style="margin-bottom: 1.5rem;">
+                        <div class="upload-icon-circle">
+                            <i class="fa-solid fa-cloud-arrow-up"
+                                style="font-size: 2rem; color: var(--primary-color);"></i>
                         </div>
-                        <p style="color: var(--text-light);">Click to browse or drag and drop</p>
-                        <div class="chip-row" style="justify-content:center; margin-top:.5rem;">
-                            <span class="chip">JPG/PNG</span>
-                            <span class="chip">Max 5 MB</span>
-                            <span class="chip">Tourist places</span>
-                        </div>
-                        <input type="file" id="image-input" accept="image/*" style="display: none;">
                     </div>
-                    
-                    <img id="preview-image" class="uploaded-image hidden" alt="Preview">
-                    
-                    <button id="predict-button" class="btn btn-primary hidden" style="width: 100%; margin-top: 1rem;">
+                    <h3 class="upload-title">Click or Drag to Upload</h3>
+                    <p style="color: var(--text-light);">Support for JPG, PNG (Max 5MB)</p>
+                </div>
+
+                <div id="preview-container" style="margin-top: 2rem; position: relative;">
+                    <img id="preview-image" class="hidden" alt="Preview"
+                        style="max-width: 100%; max-height: 500px; border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.15); object-fit: contain;">
+                </div>
+
+                <div id="action-buttons"
+                    style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                    <button id="predict-button" class="btn btn-primary hidden"
+                        style="padding: 1rem 3rem; font-size: 1.1rem; border-radius: 50px; box-shadow: 0 10px 20px rgba(0, 166, 81, 0.2);">
                         Predict Location
                     </button>
-                    
-                    <a href="plan-trip.html" class="btn btn-secondary" style="width: 100%; margin-top: 1rem; display: inline-block; text-align: center; text-decoration: none;">
-                        AI Plan Trip
+                    <a href="plan-trip.html" class="btn btn-secondary"
+                        style="display: inline-block; text-align: center; text-decoration: none; padding: 1rem 2rem; border-radius: 50px; border: 2px solid var(--primary-color); color: var(--primary-color); font-weight: 600; background: transparent;">
+                        <i class="fa-solid fa-route" style="margin-right: 0.5rem;"></i>Plan Trip Instead
                     </a>
                 </div>
 
                 <div id="prediction-result" class="hidden">
-                    <div id="prediction-card" class="card" style="margin-top: 1.5rem;">
+                    <div id="prediction-card" class="card"
+                        style="margin-top: 2rem; text-align: left; border: 1px solid rgba(0, 166, 81, 0.2);">
                         <!-- Prediction results will be displayed here -->
                     </div>
                 </div>
-            </div>
-        </section>
 
-        <section class="section">
-            <h2 class="section-title">How it works</h2>
-            <div class="features-grid">
-                <div class="feature-card">
+            </div>
+
+            <!-- Features / How it works -->
+            <div class="features-grid" style="margin-top: 4rem;">
+                <div class="feature-card glass-panel">
                     <div class="feature-title">1. Upload</div>
                     <div class="feature-text">Add a clear photo of a tourist place in Pakistan.</div>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card glass-panel">
                     <div class="feature-title">2. Analyze</div>
-                    <div class="feature-text">Our model predicts location and provides key info.</div>
+                    <div class="feature-text">Our AI model predicts location and provides key info.</div>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card glass-panel">
                     <div class="feature-title">3. Plan</div>
                     <div class="feature-text">Use AI Trip Planner to craft your itinerary.</div>
                 </div>
             </div>
-        </section>
 
-        <section class="section">
-            <h2 class="section-title">Tips & Privacy</h2>
-            <div class="features-grid">
-                <div class="feature-card">
+            <!-- Tips -->
+            <div class="features-grid" style="margin-top: 2rem;">
+                <div class="feature-card glass-panel">
                     <div class="feature-title">Better results</div>
                     <div class="feature-text">Use daylight photos with the landmark centered, avoid heavy filters.</div>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card glass-panel">
                     <div class="feature-title">We respect your data</div>
-                    <div class="feature-text">Images are sent only to our prediction API for processing and are not stored on the server.</div>
+                    <div class="feature-text">Images are sent only to our prediction API for processing and are not
+                        stored on the server.</div>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card glass-panel">
                     <div class="feature-title">Next step</div>
-                    <div class="feature-text">After prediction, jump to AI Trip Planner to explore routes, costs and schedules.</div>
+                    <div class="feature-text">After prediction, jump to AI Trip Planner to explore routes, costs and
+                        schedules.</div>
                 </div>
             </div>
-        </section>
+
+        </div>
     </div>
 
     <footer>
         <div class="footer-inner">
             <div class="footer-col">
-                <img src="assets/inlogo.png" alt="AI Trip Planner" class="logo-img" style="height:32px; margin-bottom:.75rem; filter: brightness(0) invert(1);">
-                <p style="color:#a9c2b6; max-width: 250px;">Plan smarter, travel better. AI itineraries and verified trips.</p>
+                <img src="assets/inlogo.png" alt="AI Trip Planner" class="logo-img"
+                    style="height:32px; margin-bottom:.75rem; filter: brightness(0) invert(1);">
+                <p style="color:#a9c2b6; max-width: 250px;">Plan smarter, travel better. AI itineraries and verified
+                    trips.</p>
             </div>
             <div class="footer-col">
                 <h4>Quick Links</h4>
@@ -152,23 +184,19 @@
                 <a href="create-agency.html">Create Agency</a>
             </div>
             <div class="footer-col">
-    <h4>Get in Touch</h4>
-
-    <a href="mailto:support@aitripplanner.app">
-        <i class="fa-solid fa-envelope"></i> support@aitripplanner.app
-    </a>
-
-    <a href="tel:+923000000000">
-        <i class="fa-solid fa-phone"></i> +92 300 0000000
-    </a>
-
-    <div class="social-links" style="margin-top: 1rem; display: flex; gap: 1rem;">
-        <a href="#" title="Facebook"><i class="fa-brands fa-facebook-f"></i></a>
-        <a href="#" title="Instagram"><i class="fa-brands fa-instagram"></i></a>
-        <a href="#" title="Twitter"><i class="fa-brands fa-x-twitter"></i></a>
-    </div>
-</div>
-
+                <h4>Get in Touch</h4>
+                <a href="mailto:support@aitripplanner.app">
+                    <i class="fa-solid fa-envelope"></i> support@aitripplanner.app
+                </a>
+                <a href="tel:+923000000000">
+                    <i class="fa-solid fa-phone"></i> +92 300 0000000
+                </a>
+                <div class="social-links" style="margin-top: 1rem; display: flex; gap: 1rem;">
+                    <a href="#" title="Facebook"><i class="fa-brands fa-facebook-f"></i></a>
+                    <a href="#" title="Instagram"><i class="fa-brands fa-instagram"></i></a>
+                    <a href="#" title="Twitter"><i class="fa-brands fa-x-twitter"></i></a>
+                </div>
+            </div>
         </div>
         <div class="footer-bottom">© <span id="year"></span> AI Trip Planner. All rights reserved.</div>
     </footer>
@@ -179,5 +207,5 @@
     <script type="module" src="js/navbar.js"></script>
     <script type="module" src="js/image-predict.js"></script>
 </body>
-</html>
 
+</html>

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,9 +10,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
+
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
         .payment-container {
@@ -20,23 +22,27 @@
             padding: 2rem;
             background: white;
             border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
         }
+
         .payment-summary {
             background: #f8f9fa;
             padding: 1.5rem;
             border-radius: 8px;
             margin-bottom: 2rem;
         }
+
         .payment-summary h3 {
             color: var(--primary-color);
             margin-bottom: 1rem;
         }
+
         .payment-summary p {
             margin: 0.5rem 0;
             display: flex;
             justify-content: space-between;
         }
+
         .payment-summary .total {
             font-size: 1.5rem;
             font-weight: 700;
@@ -45,17 +51,20 @@
             padding-top: 1rem;
             margin-top: 1rem;
         }
+
         #card-element {
             border: 1px solid #ced4da;
             border-radius: 8px;
             padding: 12px;
             margin-bottom: 1rem;
         }
+
         #card-errors {
             color: #dc3545;
             margin-top: 0.5rem;
             font-size: 0.9rem;
         }
+
         .secure-badge {
             display: flex;
             align-items: center;
@@ -66,7 +75,8 @@
         }
     </style>
 </head>
-<body>
+
+<body style="font-family: 'Outfit', sans-serif;">
     <header>
         <nav class="navbar">
             <a href="index.html" class="logo">
@@ -87,24 +97,27 @@
             </div>
 
             <form id="payment-form">
-    <h3 style="margin-bottom: 1rem;">Card Details</h3>
-    
-    <div id="card-element"></div>
-    <div id="card-errors" role="alert"></div>
+                <h3 style="margin-bottom: 1rem;">Card Details</h3>
 
-    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;" id="pay-button">
-        Pay Now
-    </button>
+                <div id="card-element"></div>
+                <div id="card-errors" role="alert"></div>
 
-    <div class="secure-badge" style="margin-top: 1rem; text-align: center; color: #718096; font-size: 0.9rem;">
-        
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px;">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-        </svg>
-        Secured by Stripe
-    </div>
-</form>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;" id="pay-button">
+                    Pay Now
+                </button>
+
+                <div class="secure-badge"
+                    style="margin-top: 1rem; text-align: center; color: #718096; font-size: 0.9rem;">
+
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round"
+                        style="vertical-align: middle; margin-right: 6px;">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    Secured by Stripe
+                </div>
+            </form>
 
             <div id="payment-error" class="alert alert-error hidden" style="margin-top: 1rem;"></div>
             <div id="payment-success" class="alert alert-success hidden" style="margin-top: 1rem;"></div>
@@ -114,4 +127,5 @@
     <script src="https://js.stripe.com/v3/"></script>
     <script type="module" src="js/payment.js"></script>
 </body>
+
 </html>

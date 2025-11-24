@@ -6,150 +6,131 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - AI Trip Planner</title>
     <link rel="icon" href="/assets/man.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 
 <body>
-    <div class="auth-page">
-        <div class="auth-container">
-            <div class="auth-left">
-                <div class="auth-branding">
-                    <a href="index.html">
-                        <img src="assets/inlogo.png" alt="AI Trip Planner" class="auth-logo">
-                    </a>
-                    <h1>Welcome Back</h1>
-                    <p>Sign in to continue your journey</p>
+    <div class="auth-page"
+        style="background: linear-gradient(135deg, #f6f8fd 0%, #eef2f8 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; font-family: 'Outfit', sans-serif;">
+        <div class="glass-panel"
+            style="display: flex; max-width: 1000px; width: 100%; border-radius: 24px; overflow: hidden; min-height: 600px; box-shadow: 0 20px 40px rgba(0,0,0,0.1);">
+            <!-- Left Side: Branding/Image -->
+            <div class="auth-left"
+                style="flex: 1; background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-color) 100%); padding: 3rem; display: flex; flex-direction: column; justify-content: space-between; color: white; position: relative; overflow: hidden;">
+                <!-- Decorative circles -->
+                <div
+                    style="position: absolute; top: -50px; left: -50px; width: 200px; height: 200px; border-radius: 50%; background: rgba(255,255,255,0.1);">
                 </div>
-                <div class="auth-image">
-                    <img src="assets/man.png" alt="Travel">
+                <div
+                    style="position: absolute; bottom: -50px; right: -50px; width: 300px; height: 300px; border-radius: 50%; background: rgba(255,255,255,0.05);">
+                </div>
+
+                <div style="position: relative; z-index: 1;">
+                    <a href="index.html" style="display: inline-block; margin-bottom: 2rem;">
+                        <img src="assets/inlogo.png" alt="AI Trip Planner"
+                            style="height: 40px; filter: brightness(0) invert(1);">
+                    </a>
+                    <h1 style="font-size: 2.5rem; font-weight: 700; margin-bottom: 1rem; line-height: 1.2;">Welcome
+                        Back<br>Traveler!</h1>
+                    <p style="font-size: 1.1rem; opacity: 0.9;">Sign in to continue your journey and access your
+                        personalized trip plans.</p>
+                </div>
+
+                <div style="position: relative; z-index: 1; text-align: center;">
+                    <img src="assets/man.png" alt="Travel"
+                        style="max-width: 80%; height: auto; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.2));">
                 </div>
             </div>
 
-            <div class="auth-right">
-                <div class="auth-form-wrapper">
-                    <h2>Login to Your Account</h2>
-                    <p class="auth-subtitle">Enter your credentials to access your account</p>
+            <!-- Right Side: Form -->
+            <div class="auth-right"
+                style="flex: 1; padding: 3rem; background: rgba(255,255,255,0.8); display: flex; flex-direction: column; justify-content: center;">
+                <div style="max-width: 400px; margin: 0 auto; width: 100%;">
+                    <h2 style="font-size: 2rem; font-weight: 700; color: var(--primary-dark); margin-bottom: 0.5rem;">
+                        Login</h2>
+                    <p style="color: var(--text-light); margin-bottom: 2rem;">Enter your credentials to access your
+                        account</p>
 
                     <form id="login-form-element">
-                        <div class="form-group">
+                        <div class="form-group" style="margin-bottom: 1.5rem;">
                             <label for="login-email">Email Address</label>
-                            <input type="email" id="login-email" autocomplete="username" required
-                                placeholder="Enter your email">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="login-password">Password</label>
                             <div style="position: relative;">
-                                <input type="password" id="login-password" autocomplete="current-password" required
-                                    placeholder="Enter your password" style="padding-right: 45px;">
-                                <button type="button" id="toggle-login-password"
-                                    style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 5px; display: flex; align-items: center; justify-content: center;"
-                                    title="Show/Hide Password">
-                                    <svg id="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                                        stroke="#6c757d" stroke-width="2" stroke-linecap="round"
-                                        stroke-linejoin="round">
-                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                        <circle cx="12" cy="12" r="3"></circle>
-                                    </svg>
-                                    <svg id="eye-off-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                                        stroke="#6c757d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                        style="display: none;">
-                                        <path
-                                            d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24">
-                                        </path>
-                                        <line x1="1" y1="1" x2="23" y2="23"></line>
-                                    </svg>
-                                </button>
+                                <i class="fa-solid fa-envelope"
+                                    style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-light);"></i>
+                                <input type="email" id="login-email" autocomplete="username" required
+                                    placeholder="Enter your email" style="padding-left: 2.75rem;">
                             </div>
                         </div>
 
-                        <button type="submit" class="btn btn-primary" style="width:100%;">Sign In</button>
+                        <div class="form-group" style="margin-bottom: 1.5rem;">
+                            <label for="login-password">Password</label>
+                            <div style="position: relative;">
+                                <i class="fa-solid fa-lock"
+                                    style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-light);"></i>
+                                <input type="password" id="login-password" autocomplete="current-password" required
+                                    placeholder="Enter your password"
+                                    style="padding-left: 2.75rem; padding-right: 2.75rem;">
+                                <button type="button" id="toggle-login-password"
+                                    style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-light);">
+                                    <i class="fa-solid fa-eye"></i>
+                                </button>
+                            </div>
+                            <div style="text-align: right; margin-top: 0.5rem;">
+                                <a href="#"
+                                    style="color: var(--primary-color); font-size: 0.9rem; text-decoration: none; font-weight: 500;">Forgot
+                                    Password?</a>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary"
+                            style="width: 100%; padding: 1rem; border-radius: 12px; font-weight: 600; font-size: 1.1rem; margin-bottom: 1.5rem; box-shadow: 0 4px 15px rgba(0, 103, 52, 0.2);">
+                            Sign In
+                        </button>
                     </form>
 
-                    <div id="login-error" class="alert alert-error hidden" style="margin-top:1rem;"></div>
+                    <div id="login-error" class="alert alert-error hidden"
+                        style="margin-bottom: 1.5rem; padding: 1rem; border-radius: 8px; background: #ffebee; color: #c62828; border: 1px solid #ef9a9a;">
+                    </div>
 
-                    <div style="margin: 1.5rem 0; display: flex; align-items: center; gap: 1rem;">
-                        <div style="flex: 1; height: 1px; background: #e0e0e0;"></div>
-                        <span style="color: var(--text-light); font-size: 0.9rem;">OR</span>
-                        <div style="flex: 1; height: 1px; background: #e0e0e0;"></div>
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+                        <div style="flex: 1; height: 1px; background: rgba(0,0,0,0.1);"></div>
+                        <span style="color: var(--text-light); font-size: 0.9rem; font-weight: 500;">OR</span>
+                        <div style="flex: 1; height: 1px; background: rgba(0,0,0,0.1);"></div>
                     </div>
 
                     <button type="button" id="google-signin-btn" class="btn"
-                        style="width: 100%; background: white; color: #333; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; gap: 0.75rem; font-weight: 500;">
-                        <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
-                            <path
-                                d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"
-                                fill="#4285F4" />
-                            <path
-                                d="M9.003 18c2.43 0 4.467-.806 5.956-2.18L12.05 13.56c-.806.54-1.836.86-3.047.86-2.344 0-4.328-1.584-5.036-3.711H.96v2.332C2.44 15.983 5.485 18 9.003 18z"
-                                fill="#34A853" />
-                            <path
-                                d="M3.964 10.712c-.18-.54-.282-1.117-.282-1.71 0-.593.102-1.17.282-1.71V4.96H.957C.347 6.175 0 7.55 0 9.002c0 1.452.348 2.827.957 4.042l3.007-2.332z"
-                                fill="#FBBC05" />
-                            <path
-                                d="M9.003 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.464.891 11.426 0 9.003 0 5.485 0 2.44 2.017.96 4.958L3.967 7.29c.708-2.127 2.692-3.71 5.036-3.71z"
-                                fill="#EA4335" />
-                        </svg>
+                        style="width: 100%; background: white; color: #333; border: 1px solid rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; gap: 0.75rem; font-weight: 600; padding: 0.85rem; border-radius: 12px; transition: all 0.3s ease;">
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google"
+                            style="width: 20px; height: 20px;">
                         Continue with Google
                     </button>
 
-                    <p class="auth-switch">
-                        Don't have an account? <a href="signup.html">Sign up here</a>
-                    </p>
-                </div>
-            </div>
-        </div>
-    </div>
+                    
+                    
 
-    <footer>
-        <div class="footer-inner">
-            <div class="footer-col">
-                <img src="assets/inlogo.png" alt="AI Trip Planner" class="logo-img"
-                    style="height:32px; margin-bottom:.75rem; filter: brightness(0) invert(1);">
-                <p style="color:#a9c2b6; max-width: 250px;">Plan smarter, travel better. AI itineraries and verified
-                    trips.</p>
-            </div>
-            <div class="footer-col">
-                <h4>Quick Links</h4>
-                <a href="index.html">Home</a>
-                <a href="explore.html">Explore Destinations</a>
-                <a href="plan-trip.html">AI Trip Planner</a>
-                <a href="image-predict.html">Image Predict</a>
-            </div>
-            <div class="footer-col">
-                <h4>Account</h4>
-                <a href="profile.html">Profile</a>
-                <a href="signup.html">Sign Up</a>
-                <a href="login.html">Login</a>
-                <a href="create-agency.html">Create Agency</a>
-            </div>
-            <div class="footer-col">
-                <h4>Get in Touch</h4>
+                        <script type="module" src="js/login.js"></script>
+                        <script type="module" src="js/navbar.js"></script>
+                        <script type="module" src="js/auth.js"></script>
+                        <script>
+                            const togglePassword = document.querySelector('#toggle-login-password');
+                            const password = document.querySelector('#login-password');
 
-                <a href="mailto:support@aitripplanner.app">
-                    <i class="fa-solid fa-envelope"></i> support@aitripplanner.app
-                </a>
+                            if (togglePassword && password) {
+                                togglePassword.addEventListener('click', function (e) {
+                                    // toggle the type attribute
+                                    const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+                                    password.setAttribute('type', type);
+                                    // toggle the eye slash icon
+                                    this.querySelector('i').classList.toggle('fa-eye-slash');
+                                    this.querySelector('i').classList.toggle('fa-eye');
+                                });
+                            }
+                        </script>
+                    </body>
 
-                <a href="tel:+923000000000">
-                    <i class="fa-solid fa-phone"></i> +92 300 0000000
-                </a>
-
-                <div class="social-links" style="margin-top: 1rem; display: flex; gap: 1rem;">
-                    <a href="#" title="Facebook"><i class="fa-brands fa-facebook-f"></i></a>
-                    <a href="#" title="Instagram"><i class="fa-brands fa-instagram"></i></a>
-                    <a href="#" title="Twitter"><i class="fa-brands fa-x-twitter"></i></a>
-                </div>
-            </div>
-
-        </div>
-        <div class="footer-bottom">© <span id="year"></span> AI Trip Planner. All rights reserved.</div>
-    </footer>
-    <script>
-        document.getElementById('year').textContent = new Date().getFullYear();
-    </script>
-
-    <script type="module" src="js/login.js"></script>
-</body>
-
-</html>
+                    </html>
