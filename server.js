@@ -20,6 +20,27 @@ const upload = multer({ storage: multer.memoryStorage() });
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Helper function to repair common JSON issues
+function repairJSON(jsonString) {
+  try {
+    // Remove trailing commas before closing brackets
+    let repaired = jsonString.replace(/,\s*([\]}])/g, '$1');
+    
+    // Remove trailing commas in objects
+    repaired = repaired.replace(/,\s*}/g, '}');
+    
+    // Remove trailing commas in arrays
+    repaired = repaired.replace(/,\s*]/g, ']');
+    
+    // Fix single quotes to double quotes for JSON keys (basic fix)
+    repaired = repaired.replace(/'([^']*)'\s*:/g, '"$1":');
+    
+    return repaired;
+  } catch (error) {
+    return jsonString;
+  }
+}
+
 // API Routes
 
 // Health check
@@ -34,7 +55,7 @@ app.get('/api/config', (req, res) => {
   });
 });
 
-// AI Trip Planning - Gemini API
+// AI Trip Planning - groq 
 app.post('/api/generate-plan', async (req, res) => {
   try {
     const { departure, destination, startDate, endDate, numberOfPeople, budget, accommodationType, preferences, specialRequirements } = req.body;

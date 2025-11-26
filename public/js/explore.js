@@ -49,10 +49,10 @@ async function loadDestinations() {
             };
         });
 
-        // Build cities map
+        // Build cities map (normalize city names to lowercase)
         agenciesByCity = {};
         allAgencies.forEach(agency => {
-            const city = String(agency.location || 'Other').trim();
+            const city = String(agency.location || 'Other').trim().toLowerCase();
             if (!agenciesByCity[city]) {
                 agenciesByCity[city] = [];
             }
@@ -162,8 +162,8 @@ function showAgenciesForCity(city) {
     // Scroll to content on mobile
     scrollToContent();
 
-    // Get agencies in this city (by agency location)
-    const cityAgencies = allAgencies.filter(a => String(a.location || '').trim() === city);
+    // Get agencies in this city (by agency location - case insensitive)
+    const cityAgencies = allAgencies.filter(a => String(a.location || '').trim().toLowerCase() === city.toLowerCase());
 
     // Count trips per agency
     const agenciesWithCount = cityAgencies.map(agency => {
@@ -540,14 +540,14 @@ function handleURLParameters() {
         setTimeout(() => {
             const agency = allAgencies.find(a => a.id === agencyId);
             if (agency) {
-                showTripsForAgency(city, agency);
+                showTripsForAgency(city.toLowerCase(), agency);
             } else {
-                showAgenciesForCity(city);
+                showAgenciesForCity(city.toLowerCase());
             }
         }, 500);
     } else if (city) {
         setTimeout(() => {
-            showAgenciesForCity(city);
+            showAgenciesForCity(city.toLowerCase());
         }, 500);
     }
 }
@@ -563,7 +563,7 @@ function initTabHandlers() {
                 // Go back to cities view
                 const cityEntries = {};
                 allAgencies.forEach(agency => {
-                    const city = String(agency.location || 'Other').trim();
+                    const city = String(agency.location || 'Other').trim().toLowerCase();
                     if (!cityEntries[city]) cityEntries[city] = [];
                     cityEntries[city].push(agency);
                 });

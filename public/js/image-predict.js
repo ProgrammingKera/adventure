@@ -50,7 +50,8 @@ uploadArea.addEventListener('drop', (e) => {
     uploadArea.classList.remove('dragover');
 
     const files = e.dataTransfer.files;
-    if (files.length > 0 && files[0].type.startsWith('image/')) {
+    if (files.length > 0) {
+        // Accept all image files
         handleImageFile(files[0]);
     }
 });
@@ -58,11 +59,20 @@ uploadArea.addEventListener('drop', (e) => {
 // File input change
 imageInput.addEventListener('change', (e) => {
     if (e.target.files.length > 0) {
-        handleImageFile(e.target.files[0]);
+        const file = e.target.files[0];
+        // Accept all file types - server will handle validation
+        handleImageFile(file);
     }
 });
 
 function handleImageFile(file) {
+    // Check file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+        alert('File size exceeds 5MB limit. Please choose a smaller image.');
+        return;
+    }
+
     const reader = new FileReader();
 
     reader.onload = (e) => {

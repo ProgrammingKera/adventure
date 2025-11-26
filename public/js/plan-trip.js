@@ -832,60 +832,64 @@ export function formatStructuredPlan(plan, formData) {
         return formatted || '<p>Plan content is being processed...</p>';
     }
 
-    // Save plan function
-    window.savePlan = async function () {
-        const user = auth.currentUser;
-        if (!user) {
-            alert('Please login to save your trip plan');
-            window.location.href = 'profile.html';
+}
+
+// Save plan function - defined globally so it can be called from HTML onclick
+window.savePlan = async function () {
+    console.log('savePlan called');
+    const user = auth.currentUser;
+    if (!user) {
+        alert('Please login to save your trip plan');
+        window.location.href = 'profile.html';
+        return;
+    }
+
+    try {
+        // Get the current plan data from the global variable
+        if (!window.currentPlanData) {
+            alert('No plan data available to save. Please generate a plan first.');
             return;
         }
 
-        try {
-            // Get the current plan data from the global variable
-            if (!window.currentPlanData) {
-                alert('No plan data available to save. Please generate a plan first.');
-                return;
-            }
+        // Get form data with null checks
+        const departureEl = document.getElementById('departure');
+        const destinationEl = document.getElementById('destination');
+        const startDateEl = document.getElementById('startDate');
+        const endDateEl = document.getElementById('endDate');
+        const numberOfPeopleEl = document.getElementById('numberOfPeople');
+        const budgetEl = document.getElementById('budget');
+        const accommodationTypeEl = document.getElementById('accommodationType');
+        const specialRequirementsEl = document.getElementById('specialRequirements');
 
-            // Get form data with null checks
-            const departureEl = document.getElementById('departure');
-            const destinationEl = document.getElementById('destination');
-            const startDateEl = document.getElementById('startDate');
-            const endDateEl = document.getElementById('endDate');
-            const numberOfPeopleEl = document.getElementById('numberOfPeople');
-            const budgetEl = document.getElementById('budget');
-            const accommodationTypeEl = document.getElementById('accommodationType');
-            const specialRequirementsEl = document.getElementById('specialRequirements');
-
-            if (!departureEl || !destinationEl || !startDateEl || !endDateEl) {
-                alert('Error: Form elements not found. Please try again.');
-                return;
-            }
-
-            const savedPlanData = {
-                userId: user.uid,
-                departure: departureEl.value,
-                destination: destinationEl.value,
-                startDate: startDateEl.value,
-                endDate: endDateEl.value,
-                numberOfPeople: numberOfPeopleEl ? numberOfPeopleEl.value : '1',
-                budget: budgetEl ? budgetEl.value : 'Not specified',
-                accommodationType: accommodationTypeEl ? accommodationTypeEl.value : 'Not specified',
-                preferences: Array.from(document.querySelectorAll('input[name="preferences"]:checked')).map(cb => cb.value),
-                specialRequirements: specialRequirementsEl ? (specialRequirementsEl.value || 'None') : 'None',
-                planData: window.currentPlanData, // Save structured JSON data
-                savedAt: serverTimestamp()
-            };
-
-            await addDoc(collection(db, 'savedPlans'), savedPlanData);
-
-            alert('Trip plan saved successfully! You can view it in your profile.');
-        } catch (error) {
-            alert('Failed to save plan: ' + error.message);
+        if (!departureEl || !destinationEl || !startDateEl || !endDateEl) {
+            alert('Error: Form elements not found. Please try again.');
+            return;
         }
-    };
-}
+
+        const savedPlanData = {
+            userId: user.uid,
+            departure: departureEl.value,
+            destination: destinationEl.value,
+            startDate: startDateEl.value,
+            endDate: endDateEl.value,
+            numberOfPeople: numberOfPeopleEl ? numberOfPeopleEl.value : '1',
+            budget: budgetEl ? budgetEl.value : 'Not specified',
+            accommodationType: accommodationTypeEl ? accommodationTypeEl.value : 'Not specified',
+            preferences: Array.from(document.querySelectorAll('input[name="preferences"]:checked')).map(cb => cb.value),
+            specialRequirements: specialRequirementsEl ? (specialRequirementsEl.value || 'None') : 'None',
+            planData: window.currentPlanData, // Save structured JSON data
+            savedAt: serverTimestamp()
+        };
+
+        console.log('Saving plan data:', savedPlanData);
+        await addDoc(collection(db, 'savedPlans'), savedPlanData);
+
+        alert('Trip plan saved successfully! You can view it in your profile.');
+    } catch (error) {
+        console.error('Error saving plan:', error);
+        alert('Failed to save plan: ' + error.message);
+    }
+};
 // Check auth state
 onAuthStateChanged(auth, (user) => {
     if (user) {
@@ -893,4 +897,6 @@ onAuthStateChanged(auth, (user) => {
         if (profileLink) profileLink.textContent = 'Profile';
     }
 });
+
+console.log('plan-trip.js module loaded, savePlan function available:', typeof window.savePlan);
 

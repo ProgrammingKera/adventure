@@ -61,8 +61,9 @@ if (fuelForm) {
             const consumptionEl = document.getElementById('fuel-consumption');
             const fuelPriceEl = document.getElementById('fuel-price');
             const travelersEl = document.getElementById('fuel-travelers');
+            const stayDaysEl = document.getElementById('fuel-stay-days');
 
-            if (!departureEl || !destinationEl || !carTypeEl || !consumptionEl || !fuelPriceEl || !travelersEl) {
+            if (!departureEl || !destinationEl || !carTypeEl || !consumptionEl || !fuelPriceEl || !travelersEl || !stayDaysEl) {
                 throw new Error('Form elements not found');
             }
 
@@ -72,8 +73,9 @@ if (fuelForm) {
             const consumption = parseFloat(consumptionEl.value);
             const fuelPrice = parseFloat(fuelPriceEl.value);
             const travelers = parseInt(travelersEl.value);
+            const stayDays = parseInt(stayDaysEl.value);
 
-            if (!departure || !destination || !carType || !consumption || !fuelPrice || !travelers) {
+            if (!departure || !destination || !carType || !consumption || !fuelPrice || !travelers || !stayDays) {
                 throw new Error('Please fill all required fields');
             }
 
@@ -98,6 +100,14 @@ if (fuelForm) {
 
             const aiSuggestions = await getAISuggestions(departure, destination, distance);
 
+            // Get AI-based cost estimates for the destination
+            const costEstimates = await getDestinationCosts(destination, stayDays, travelers);
+            const totalFoodCost = costEstimates.foodCost;
+            const totalHotelCost = costEstimates.hotelCost;
+            const otherCosts = (totalCost * 0.1).toFixed(2); // 10% of fuel for misc
+            const totalTripCost = (parseFloat(totalCost) + parseFloat(totalFoodCost) + parseFloat(totalHotelCost) + parseFloat(otherCosts)).toFixed(2);
+            const costPerPersonTotal = (totalTripCost / travelers).toFixed(2);
+
             displayResults({
                 departure, destination, distance: Math.round(distance),
                 carType: carName,
@@ -106,6 +116,12 @@ if (fuelForm) {
                 totalCost: totalCost.toFixed(2),
                 costPerPerson: costPerPerson.toFixed(2),
                 fuelPrice, travelers,
+                stayDays: stayDays,
+                foodCost: totalFoodCost,
+                hotelCost: totalHotelCost,
+                otherCosts: otherCosts,
+                totalTripCost: totalTripCost,
+                costPerPersonTotal: costPerPersonTotal,
                 aiSuggestions
             });
         } catch (error) {
@@ -176,6 +192,74 @@ async function calculateDistance(departure, destination) {
     } catch (error) {
         console.error('Distance calculation error:', error);
         throw error;
+    }
+}
+
+async function getDestinationCosts(destination, stayDays, travelers) {
+    try {
+        const prompt = `You are a Pakistan travel expert. Provide realistic daily cost estimates for ${destination} for food and accommodation per person.
+
+Return ONLY valid JSON with no markdown, no code blocks:
+{"foodCostPerDay":500,"hotelCostPerDay":1500}
+
+Based on ${destination}'s actual prices. foodCostPerDay is for meals (breakfast, lunch, dinner), hotelCostPerDay is for mid-range hotel per night.`;
+
+        const response = await fetch(GROQ_API_URL_FUEL, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${GROQ_API_KEY_FUEL}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'moonshotai/kimi-k2-instruct',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.5,
+                max_tokens: 200
+            })
+        });
+
+        if (!response.ok) {
+            console.error('Cost estimation API error:', response.status);
+            // Return default values if API fails
+            return {
+                foodCost: (500 * stayDays * travelers).toFixed(2),
+                hotelCost: (1500 * (stayDays - 1) * travelers).toFixed(2)
+            };
+        }
+
+        const data = await response.json();
+        const content = data.choices[0].message.content;
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+
+        if (jsonMatch) {
+            try {
+                const costs = JSON.parse(jsonMatch[0]);
+                const foodCostPerDay = costs.foodCostPerDay || 500;
+                const hotelCostPerDay = costs.hotelCostPerDay || 1500;
+                
+                return {
+                    foodCost: (foodCostPerDay * stayDays * travelers).toFixed(2),
+                    hotelCost: (hotelCostPerDay * (stayDays - 1) * travelers).toFixed(2)
+                };
+            } catch (e) {
+                console.error('JSON parse error:', e);
+                return {
+                    foodCost: (500 * stayDays * travelers).toFixed(2),
+                    hotelCost: (1500 * (stayDays - 1) * travelers).toFixed(2)
+                };
+            }
+        }
+
+        return {
+            foodCost: (500 * stayDays * travelers).toFixed(2),
+            hotelCost: (1500 * (stayDays - 1) * travelers).toFixed(2)
+        };
+    } catch (error) {
+        console.error('Destination cost error:', error);
+        return {
+            foodCost: (500 * stayDays * travelers).toFixed(2),
+            hotelCost: (1500 * (stayDays - 1) * travelers).toFixed(2)
+        };
     }
 }
 
@@ -306,19 +390,40 @@ function displayResults(data) {
                 </div>
                 <strong style="color: var(--primary-dark); font-size: 1.3rem;">PKR ${data.fuelPrice}/L</strong>
             </div>
+            <div style="display: flex; justify-content: space-between; padding: 1.5rem; background: rgba(255,255,255,0.5); border-radius: 16px; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div style="width: 40px; height: 40px; background: #e8f5e9; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--primary-color);"><i class="fa-solid fa-utensils"></i></div>
+                    <span style="color: #4a5568; font-weight: 600; font-size: 1.1rem;">Food Cost</span>
+                </div>
+                <strong style="color: var(--primary-dark); font-size: 1.3rem;">PKR ${data.foodCost}</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 1.5rem; background: rgba(255,255,255,0.5); border-radius: 16px; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div style="width: 40px; height: 40px; background: #e8f5e9; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--primary-color);"><i class="fa-solid fa-hotel"></i></div>
+                    <span style="color: #4a5568; font-weight: 600; font-size: 1.1rem;">Accommodation Cost</span>
+                </div>
+                <strong style="color: var(--primary-dark); font-size: 1.3rem;">PKR ${data.hotelCost}</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 1.5rem; background: rgba(255,255,255,0.5); border-radius: 16px; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div style="width: 40px; height: 40px; background: #e8f5e9; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--primary-color);"><i class="fa-solid fa-wallet"></i></div>
+                    <span style="color: #4a5568; font-weight: 600; font-size: 1.1rem;">Other Expenses</span>
+                </div>
+                <strong style="color: var(--primary-dark); font-size: 1.3rem;">PKR ${data.otherCosts}</strong>
+            </div>
             <div style="display: flex; justify-content: space-between; padding: 2rem; background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%); border: 2px solid var(--primary-color); border-radius: 20px; align-items: center; box-shadow: 0 10px 30px rgba(0, 166, 81, 0.1);">
                 <div style="display: flex; align-items: center; gap: 1rem;">
                     <div style="width: 50px; height: 50px; background: var(--primary-color); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.2rem;"><i class="fa-solid fa-coins"></i></div>
-                    <span style="color: var(--primary-dark); font-weight: 700; font-size: 1.3rem;">Total Cost</span>
+                    <span style="color: var(--primary-dark); font-weight: 700; font-size: 1.3rem;">Total Trip Cost</span>
                 </div>
-                <strong style="color: #d32f2f; font-size: 2rem; font-weight: 800;">PKR ${data.totalCost}</strong>
+                <strong style="color: #d32f2f; font-size: 2rem; font-weight: 800;">PKR ${data.totalTripCost}</strong>
             </div>
             <div style="display: flex; justify-content: space-between; padding: 1.5rem; background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%); border-radius: 16px; color: white; align-items: center; box-shadow: 0 8px 20px rgba(0, 103, 52, 0.2);">
                 <div style="display: flex; align-items: center; gap: 1rem;">
                     <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.2); border-radius: 10px; display: flex; align-items: center; justify-content: center;"><i class="fa-solid fa-user-group"></i></div>
-                    <span style="font-weight: 600; font-size: 1.1rem;">Cost Per Person (${data.travelers} travelers)</span>
+                    <span style="font-weight: 600; font-size: 1.1rem;">Cost Per Person</span>
                 </div>
-                <strong style="font-size: 1.5rem;">PKR ${data.costPerPerson}</strong>
+                <strong style="font-size: 1.5rem;">PKR ${data.costPerPersonTotal}</strong>
             </div>
         </div>
     </div>`;

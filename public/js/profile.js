@@ -409,76 +409,6 @@ async function loadSavedPlans() {
     }
 }
 
-// Delete Saved Plan
-window.deleteSavedPlan = async function(planId) {
-    if (!confirm('Are you sure you want to delete this saved plan?')) {
-        return;
-    }
-    
-    try {
-        await deleteDoc(doc(db, 'savedPlans', planId));
-        alert('Plan deleted successfully!');
-        await loadSavedPlans();
-    } catch (error) {
-        console.error('Error deleting plan:', error);
-        alert('Failed to delete plan: ' + error.message);
-    }
-};
-
-// Load My Bookings
-async function loadMyBookings() {
-    const user = auth.currentUser;
-    if (!user) return;
-    
-    const container = document.getElementById('my-bookings-container');
-    if (!container) return;
-    
-    container.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading bookings...</p></div>';
-
-    try {
-        const bookingsRef = collection(db, 'bookings');
-        const q = query(bookingsRef, where('userId', '==', user.uid));
-        const snapshot = await getDocs(q);
-
-        if (snapshot.empty) {
-            container.innerHTML = '<p style="text-align:center;color:var(--text-light);">No bookings yet.</p>';
-            return;
-        }
-
-        const cards = await Promise.all(snapshot.docs.map(async (docSnap) => {
-            const b = docSnap.data();
-            const tripSnap = await getDoc(doc(db, 'trips', b.tripId));
-            const trip = tripSnap.exists() ? tripSnap.data() : {};
-
-            const dateStr = trip.date 
-                ? (typeof trip.date.toDate === 'function' ? trip.date.toDate().toLocaleDateString() : trip.date)
-                : 'N/A';
-
-            const bookedOn = b.createdAt 
-                ? (b.createdAt.toDate ? b.createdAt.toDate().toLocaleString() : '')
-                : '';
-
-            return `
-                <div class="card">
-                    <div class="card-content">
-                        <h3 class="card-title">${escapeHtml(trip.description || 'Trip')}</h3>
-                        <p class="card-text"><strong>Destination:</strong> ${escapeHtml(trip.location || 'N/A')}</p>
-                        <p class="card-text"><strong>Date:</strong> ${dateStr}</p>
-                        <p class="card-text"><strong>Seats:</strong> ${b.seatsBooked}</p>
-                        <p class="card-text"><strong>Your Location:</strong> ${escapeHtml(b.userLocation || '-')}</p>
-                        <p class="card-text"><strong>Booked On:</strong> ${bookedOn}</p>
-                    </div>
-                </div>
-            `;
-        }));
-
-        container.innerHTML = cards.join('');
-    } catch (e) {
-        console.error('Error loading bookings:', e);
-        container.innerHTML = '<p style="text-align:center;color:red;">Error loading bookings.</p>';
-    }
-}
-
 // View Saved Plan in New Tab
 window.viewSavedPlan = async function(planId) {
     try {
@@ -504,6 +434,8 @@ window.viewSavedPlan = async function(planId) {
                     budget: savedPlan.budget
                 };
                 formattedContent = formatStructuredPlan(savedPlan.planData, formData);
+                // Remove the Save Trip button since this is already a saved plan
+                formattedContent = formattedContent.replace(/<div style="text-align: center; margin-top: 3rem;[^>]*>.*?onclick="savePlan\(\)"[^>]*>.*?<\/button>.*?<\/div>/s, '');
             } catch (formatError) {
                 console.error('Error formatting plan:', formatError);
                 alert('Error displaying plan. Please try again.');
@@ -518,7 +450,6 @@ window.viewSavedPlan = async function(planId) {
                     <div style="margin: 1rem 0;"><strong>Travelers:</strong> ${savedPlan.numberOfPeople}</div>
                     <div style="margin: 1rem 0;"><strong>Budget:</strong> ${escapeHtml(savedPlan.budget)}</div>
                     <hr style="margin: 2rem 0;">
-                    <div>${escapeHtml(savedPlan.plan || '').replace(/\n/g, '<br>')}</div>
                 </div>
             `;
         }
@@ -531,6 +462,10 @@ window.viewSavedPlan = async function(planId) {
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>Saved Trip Plan - ${escapeHtml(savedPlan.destination)}</title>
+                <link rel="preconnect" href="https://fonts.googleapis.com">
+                <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+                <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
                 <style>
                     * {
                         margin: 0;
@@ -543,36 +478,144 @@ window.viewSavedPlan = async function(planId) {
                         --primary-light: #008045;
                         --text-dark: #333;
                         --text-light: #666;
+                        --white: #ffffff;
+                        --shadow: 0 8px 20px rgba(0,0,0,0.05);
+                        --shadow-hover: 0 12px 30px rgba(0,0,0,0.1);
+                        --primary-gradient: linear-gradient(135deg, #006734 0%, #004d26 100%);
                     }
                     body { 
-                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                        font-family: 'Outfit', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
                         margin: 0;
                         padding: 0;
                         background: #f9f9f9;
                         line-height: 1.6;
                         color: #333;
                     }
+                    .plan-container {
+                        max-width: 1200px;
+                        margin: 0 auto;
+                        padding: 2rem;
+                    }
+                    .plan-section {
+                        margin-bottom: 3rem;
+                        animation: fadeIn 0.8s ease-out;
+                    }
+                    .section-title {
+                        display: flex;
+                        align-items: center;
+                        gap: 1rem;
+                        margin-bottom: 2rem;
+                        font-size: 1.8rem;
+                        font-weight: 700;
+                        background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-light) 100%);
+                        -webkit-background-clip: text;
+                        -webkit-text-fill-color: transparent;
+                        background-clip: text;
+                    }
+                    .glass-panel {
+                        background: rgba(255, 255, 255, 0.7);
+                        backdrop-filter: blur(10px);
+                        border: 1px solid rgba(255, 255, 255, 0.2);
+                        border-radius: 24px;
+                        box-shadow: var(--shadow);
+                    }
+                    .card {
+                        background: white;
+                        border-radius: 16px;
+                        padding: 1.5rem;
+                        box-shadow: var(--shadow);
+                        transition: all 0.3s ease;
+                        border: 1px solid rgba(0,0,0,0.05);
+                    }
+                    .card:hover {
+                        box-shadow: var(--shadow-hover);
+                        transform: translateY(-2px);
+                    }
+                    .card-grid {
+                        display: grid;
+                        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                        gap: 2rem;
+                    }
+                    .card-image-wrapper {
+                        width: 100%;
+                        height: 200px;
+                        overflow: hidden;
+                        background: #f0f4f2;
+                        border-radius: 12px 12px 0 0;
+                        margin: -1.5rem -1.5rem 1rem -1.5rem;
+                    }
+                    .card-image {
+                        width: 100%;
+                        height: 100%;
+                        object-fit: cover;
+                        display: block;
+                    }
+                    .card-content {
+                        padding: 0;
+                    }
+                    .card-title {
+                        font-size: 1.3rem;
+                        font-weight: 700;
+                        color: var(--primary-dark);
+                        margin-bottom: 1rem;
+                    }
+                    .card-text {
+                        color: var(--text-dark);
+                        line-height: 1.6;
+                        margin-bottom: 0.5rem;
+                    }
                     .btn {
                         display: inline-block;
                         padding: 0.75rem 2rem;
                         border: none;
-                        border-radius: 5px;
+                        border-radius: 8px;
                         cursor: pointer;
                         font-size: 1rem;
                         font-weight: 600;
                         transition: all 0.3s ease;
+                        font-family: 'Outfit', sans-serif;
                     }
                     .btn-primary {
-                        background: var(--primary-color);
+                        background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
                         color: white;
+                        box-shadow: 0 4px 15px rgba(0, 103, 52, 0.3);
                     }
                     .btn-primary:hover {
-                        background: var(--primary-dark);
+                        background: linear-gradient(135deg, var(--primary-dark) 0%, #003d1f 100%);
                         transform: translateY(-2px);
-                        box-shadow: 0 4px 12px rgba(0,103,52,0.3);
+                        box-shadow: 0 6px 25px rgba(0, 103, 52, 0.4);
+                    }
+                    .uniform-cards {
+                        display: grid;
+                        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                        gap: 2rem;
+                    }
+                    .card-grid.uniform-cards .card {
+                        display: flex;
+                        flex-direction: column;
+                        height: 100%;
+                    }
+                    .card-grid.uniform-cards .card-image-wrapper {
+                        margin: -1.5rem -1.5rem 1rem -1.5rem;
+                        flex-shrink: 0;
+                    }
+                    .card-grid.uniform-cards .card-content {
+                        flex: 1;
+                        display: flex;
+                        flex-direction: column;
+                    }
+                    @keyframes fadeIn {
+                        from { opacity: 0; transform: translateY(10px); }
+                        to { opacity: 1; transform: translateY(0); }
+                    }
+                    @keyframes fadeInUp {
+                        from { opacity: 0; transform: translateY(20px); }
+                        to { opacity: 1; transform: translateY(0); }
                     }
                     @media print {
                         .no-print { display: none !important; }
+                        body { background: white; }
+                        .card { page-break-inside: avoid; }
                     }
                 </style>
             </head>
@@ -582,6 +625,20 @@ window.viewSavedPlan = async function(planId) {
                     <button onclick="window.close()" style="padding: 0.75rem 2rem; background: #666; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem; font-weight: 600; margin-left: 1rem;">Close</button>
                 </div>
                 ${formattedContent}
+                <script>
+                    // Load attraction images after page loads
+                    window.addEventListener('load', function() {
+                        const attractionImages = document.querySelectorAll('[id^="attraction-img-"]');
+                        attractionImages.forEach(img => {
+                            // Replace placeholder SVG with actual image
+                            img.src = 'assets/attraction.jpg';
+                            img.onerror = function() {
+                                // Fallback if image not found
+                                this.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22250%22%3E%3Crect fill=%22%23f0f4f2%22 width=%22400%22 height=%22250%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 font-size=%2224%22 fill=%22%23006734%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22 font-family=%22sans-serif%22 font-weight=%22bold%22%3EAttraction%3C/text%3E%3C/svg%3E';
+                            };
+                        });
+                    });
+                </script>
             </body>
             </html>
         `);
