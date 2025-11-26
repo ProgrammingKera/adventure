@@ -1,5 +1,5 @@
 import { db, auth } from '../firebase.js';
-import { collection, query, where, getDocs, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { collection, query, where, getDocs, doc, getDoc, updateDoc, increment } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
 let currentUser = null;
@@ -118,21 +118,29 @@ window.viewTripDetails = async function(tripId) {
         const bookingsSnapshot = await getDocs(q);
         
         let booking = {};
+        let bookingId = null;
         if (!bookingsSnapshot.empty) {
+            bookingId = bookingsSnapshot.docs[0].id;
             booking = bookingsSnapshot.docs[0].data();
         }
         
-        showTripDetailsModal(trip, booking);
+        showTripDetailsModal(trip, booking, bookingId);
     } catch (error) {
         console.error('Error loading trip details:', error);
         alert('Error loading trip details');
     }
 };
 
-function showTripDetailsModal(trip, booking = {}) {
+function showTripDetailsModal(trip, booking = {}, bookingId = null) {
     const bookedSeats = booking.seatsBooked || 0;
     const paymentStatus = booking.paymentStatus || 'pending';
     const totalAmount = (trip.pricePerSeat || 0) * bookedSeats;
+    const isManualPayment = paymentStatus === 'pending' || paymentStatus === 'manual';
+    
+    const tripTotalSeats = trip.totalSeats || 0;
+    const tripBookedSeats = trip.bookedSeats || 0;
+    const availableSeats = Math.max(0, tripTotalSeats - tripBookedSeats);
+    const maxSeatsForUser = Math.max(1, bookedSeats + availableSeats);
     
     // Determine payment status for display
     let amountDisplayText, amountDisplayColor;
@@ -199,6 +207,11 @@ function showTripDetailsModal(trip, booking = {}) {
                     ` : ''}
                     
                     <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                        ${isManualPayment && bookingId ? `
+                            <button onclick="window.editBooking('${bookingId}', '${trip.id}', ${bookedSeats}, ${maxSeatsForUser}, ${trip.pricePerSeat || 0})" class="btn btn-primary" style="flex: 1; cursor: pointer;">
+                                <i class="fa-solid fa-edit" style="margin-right: 0.5rem;"></i>Edit Booking
+                            </button>
+                        ` : ''}
                         <button onclick="document.getElementById('trip-details-modal').remove()" class="btn btn-secondary" style="flex: 1; cursor: pointer;">Close</button>
                     </div>
                 </div>
@@ -207,4 +220,338 @@ function showTripDetailsModal(trip, booking = {}) {
     `;
     
     document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+// Custom modal helper functions
+function showCustomModal(title, message, type = 'info') {
+    const modalId = 'custom-modal-' + Date.now();
+    const icons = {
+        success: 'fa-check-circle',
+        error: 'fa-exclamation-circle',
+        warning: 'fa-exclamation-triangle',
+        info: 'fa-info-circle'
+    };
+    const colors = {
+        success: '#22c55e',
+        error: '#ef4444',
+        warning: '#f59e0b',
+        info: '#3b82f6'
+    };
+    
+    const modalHTML = `
+        <div id="${modalId}" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 1rem;">
+            <div style="background: white; border-radius: 12px; max-width: 400px; width: 100%; box-shadow: 0 10px 40px rgba(0,0,0,0.2); animation: modalSlideIn 0.3s ease-out;">
+                <div style="padding: 2rem; text-align: center;">
+                    <div style="width: 60px; height: 60px; margin: 0 auto 1.5rem; background: ${colors[type]}20; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                        <i class="fa-solid ${icons[type]}" style="font-size: 1.8rem; color: ${colors[type]};"></i>
+                    </div>
+                    <h3 style="margin: 0 0 1rem 0; color: #1a202c; font-size: 1.3rem;">${title}</h3>
+                    <p style="margin: 0 0 2rem 0; color: #6b7280; line-height: 1.6; white-space: pre-line;">${message}</p>
+                    <button onclick="document.getElementById('${modalId}').remove()" style="background: ${colors[type]}; color: white; border: none; padding: 0.75rem 2rem; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: 600; transition: all 0.2s;">
+                        OK
+                    </button>
+                </div>
+            </div>
+        </div>
+        <style>
+            @keyframes modalSlideIn {
+                from { opacity: 0; transform: translateY(-20px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+        </style>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Auto-remove after 3 seconds for success messages
+    if (type === 'success') {
+        setTimeout(() => {
+            const modalElement = document.getElementById(modalId);
+            if (modalElement) modalElement.remove();
+        }, 3000);
+    }
+}
+
+function showEditModal(currentSeats, totalSeats, pricePerSeat) {
+    return new Promise((resolve) => {
+        const modalId = 'edit-modal-' + Date.now();
+        
+        // Store resolve function globally for this modal
+        window[`editModalResolve_${modalId}`] = resolve;
+        
+        const modalHTML = `
+            <div id="${modalId}" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 1rem;">
+                <div style="background: white; border-radius: 16px; max-width: 450px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: modalSlideIn 0.3s ease-out;">
+                    <div style="padding: 2rem;">
+                        <div style="text-align: center; margin-bottom: 2rem;">
+                            <div style="width: 70px; height: 70px; margin: 0 auto 1rem; background: linear-gradient(135deg, #006734 0%, #004d26 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                <i class="fa-solid fa-chair" style="font-size: 2rem; color: white;"></i>
+                            </div>
+                            <h3 style="margin: 0 0 0.5rem 0; color: #1a202c; font-size: 1.5rem;">Edit Your Booking</h3>
+                            <p style="margin: 0; color: #6b7280;">Change the number of seats for your trip</p>
+                        </div>
+                        
+                        <div style="background: #f8f9ff; padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                                <span style="color: #6b7280;">Current seats:</span>
+                                <span style="font-weight: 700; color: #006734;">${currentSeats}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: #6b7280;">Available seats:</span>
+                                <span style="font-weight: 700; color: #006734;">${totalSeats}</span>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; color: #374151; font-weight: 600;">New number of seats:</label>
+                            <input type="number" id="seats-input-${modalId}" min="1" max="${totalSeats}" value="${currentSeats}" 
+                                style="width: 100%; padding: 0.75rem; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem; transition: border-color 0.2s;"
+                                onfocus="this.style.borderColor='#006734'" onblur="this.style.borderColor='#e5e7eb'">
+                            <div style="font-size: 0.85rem; color: #6b7280; margin-top: 0.5rem;">Enter a number between 1 and ${totalSeats}</div>
+                        </div>
+                        
+                        <div style="display: flex; gap: 1rem;">
+                            <button onclick="document.getElementById('${modalId}').remove(); window.editModalResolve_${modalId}(null)" 
+                                style="flex: 1; padding: 0.75rem; border: 2px solid #e5e7eb; background: white; color: #6b7280; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: 600; transition: all 0.2s;">
+                                Cancel
+                            </button>
+                            <button id="update-btn-${modalId}" style="flex: 1; padding: 0.75rem; background: linear-gradient(135deg, #006734 0%, #004d26 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: 600; transition: all 0.2s;">
+                                Update Seats
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <style>
+                @keyframes modalSlideIn {
+                    from { opacity: 0; transform: translateY(-20px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            </style>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // Add event listener to Update button
+        setTimeout(() => {
+            const updateBtn = document.getElementById(`update-btn-${modalId}`);
+            if (updateBtn) {
+                updateBtn.addEventListener('click', () => {
+                    const input = document.getElementById(`seats-input-${modalId}`);
+                    const value = parseInt(input.value);
+                    if (value && value > 0 && value <= totalSeats) {
+                        document.getElementById(`${modalId}`).remove();
+                        resolve(value);
+                    } else {
+                        input.style.borderColor = '#ef4444';
+                        setTimeout(() => input.style.borderColor = '#e5e7eb', 2000);
+                    }
+                });
+            }
+            
+            // Focus input
+            const input = document.getElementById(`seats-input-${modalId}`);
+            if (input) {
+                input.focus();
+                input.select();
+            }
+        }, 100);
+        
+        // Cleanup function
+        const cleanup = () => {
+            delete window[`editModalResolve_${modalId}`];
+        };
+        
+        // Auto cleanup when modal is removed
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList') {
+                    const modalElement = document.getElementById(modalId);
+                    if (!modalElement) {
+                        cleanup();
+                        observer.disconnect();
+                    }
+                }
+            });
+        });
+        
+        observer.observe(document.body, { childList: true, subtree: true });
+    });
+}
+
+function showConfirmModal(currentSeats, newSeats, pricePerSeat) {
+    return new Promise((resolve) => {
+        const modalId = 'confirm-modal-' + Date.now();
+        const priceDiff = Math.abs((newSeats - currentSeats) * pricePerSeat);
+        const totalPrice = newSeats * pricePerSeat;
+        
+        // Store resolve function globally for this modal
+        window[`confirmModalResolve_${modalId}`] = resolve;
+        
+        const modalHTML = `
+            <div id="${modalId}" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 1rem;">
+                <div style="background: white; border-radius: 16px; max-width: 450px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: modalSlideIn 0.3s ease-out;">
+                    <div style="padding: 2rem;">
+                        <div style="text-align: center; margin-bottom: 2rem;">
+                            <div style="width: 70px; height: 70px; margin: 0 auto 1rem; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                <i class="fa-solid fa-question" style="font-size: 2rem; color: white;"></i>
+                            </div>
+                            <h3 style="margin: 0 0 0.5rem 0; color: #1a202c; font-size: 1.5rem;">Confirm Booking Change</h3>
+                            <p style="margin: 0; color: #6b7280;">Please review your booking changes</p>
+                        </div>
+                        
+                        <div style="background: #f8f9ff; padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                                <span style="color: #6b7280;">From:</span>
+                                <span style="font-weight: 700; color: #ef4444;">${currentSeats} seats</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                                <span style="color: #6b7280;">To:</span>
+                                <span style="font-weight: 700; color: #22c55e;">${newSeats} seats</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                                <span style="color: #6b7280;">Price difference:</span>
+                                <span style="font-weight: 700; color: #f59e0b;">PKR ${priceDiff.toLocaleString()}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding-top: 1rem; border-top: 2px solid #e5e7eb;">
+                                <span style="color: #1a202c; font-weight: 600;">New total price:</span>
+                                <span style="font-weight: 700; color: #006734; font-size: 1.1rem;">PKR ${totalPrice.toLocaleString()}</span>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; gap: 1rem;">
+                            <button id="cancel-confirm-${modalId}" 
+                                style="flex: 1; padding: 0.75rem; border: 2px solid #e5e7eb; background: white; color: #6b7280; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: 600; transition: all 0.2s;">
+                                Cancel
+                            </button>
+                            <button id="confirm-confirm-${modalId}" 
+                                style="flex: 1; padding: 0.75rem; background: linear-gradient(135deg, #006734 0%, #004d26 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: 600; transition: all 0.2s;">
+                                Confirm Change
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <style>
+                @keyframes modalSlideIn {
+                    from { opacity: 0; transform: translateY(-20px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            </style>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // Add event listeners to buttons
+        setTimeout(() => {
+            const cancelBtn = document.getElementById(`cancel-confirm-${modalId}`);
+            const confirmBtn = document.getElementById(`confirm-confirm-${modalId}`);
+            
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', () => {
+                    document.getElementById(`${modalId}`).remove();
+                    resolve(false);
+                });
+            }
+            
+            if (confirmBtn) {
+                confirmBtn.addEventListener('click', () => {
+                    document.getElementById(`${modalId}`).remove();
+                    resolve(true);
+                });
+            }
+        }, 100);
+        
+        // Cleanup function
+        const cleanup = () => {
+            delete window[`confirmModalResolve_${modalId}`];
+        };
+        
+        // Auto cleanup when modal is removed
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList') {
+                    const modalElement = document.getElementById(modalId);
+                    if (!modalElement) {
+                        cleanup();
+                        observer.disconnect();
+                    }
+                }
+            });
+        });
+        
+        observer.observe(document.body, { childList: true, subtree: true });
+    });
+}
+
+window.editBooking = async function(bookingId, tripId, currentSeats, totalSeats, pricePerSeat) {
+    try {
+        console.log('Edit booking started:', { bookingId, tripId, currentSeats, totalSeats, pricePerSeat });
+        
+        // Show edit modal
+        const newSeats = await showEditModal(currentSeats, totalSeats, pricePerSeat);
+        console.log('New seats from modal:', newSeats);
+        
+        if (newSeats === null) {
+            return; // User cancelled
+        }
+        
+        if (newSeats === currentSeats) {
+            showCustomModal('No Changes', 'You entered the same number of seats. No changes were made.', 'info');
+            return;
+        }
+        
+        // Show confirmation modal
+        const confirmed = await showConfirmModal(currentSeats, newSeats, pricePerSeat);
+        
+        if (!confirmed) {
+            return; // User cancelled confirmation
+        }
+        
+        // Update booking
+        const seatDifference = newSeats - currentSeats;
+        console.log('Seat difference:', seatDifference);
+        console.log('Updating booking:', bookingId, 'with seats:', newSeats);
+        console.log('Updating trip:', tripId, 'with increment:', seatDifference);
+        
+        try {
+            const bookingRef = doc(db, 'bookings', bookingId);
+            console.log('Booking ref:', bookingRef);
+            await updateDoc(bookingRef, {
+                seatsBooked: newSeats
+            });
+            console.log('Booking updated successfully');
+        } catch (bookingError) {
+            console.error('Error updating booking:', bookingError);
+            throw bookingError;
+        }
+        
+        try {
+            const tripRef = doc(db, 'trips', tripId);
+            console.log('Trip ref:', tripRef);
+            await updateDoc(tripRef, {
+                bookedSeats: increment(seatDifference)
+            });
+            console.log('Trip updated successfully');
+        } catch (tripError) {
+            console.error('Error updating trip:', tripError);
+            throw tripError;
+        }
+        
+        console.log('All updates completed successfully');
+        
+        // Show success message
+        showCustomModal(
+            'Booking Updated!', 
+            `Your booking has been successfully updated.\n\nNew seats: ${newSeats}\nTotal price: PKR ${(newSeats * pricePerSeat).toLocaleString()}`, 
+            'success'
+        );
+        
+        document.getElementById('trip-details-modal').remove();
+        loadMyBookings();
+        
+    } catch (error) {
+        console.error('Error updating booking:', error);
+        showCustomModal('Update Failed', 'Failed to update booking. Please try again.', 'error');
+    }
 }
