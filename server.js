@@ -414,6 +414,134 @@ app.post('/api/predict-image', upload.single('image'), async (req, res) => {
   }
 });
 
+// Chatbot API - Search trips and provide real data
+app.post('/api/chatbot', async (req, res) => {
+  try {
+    const { message, userId } = req.body;
+
+    if (!message || message.trim().length === 0) {
+      return res.status(400).json({ success: false, error: 'Message is required' });
+    }
+
+    // Check if user is asking about trips
+    const isAskingAboutTrips = /trip|destination|location|place|where|available|book|package/i.test(message);
+    
+    let botResponse = '';
+
+    if (isAskingAboutTrips) {
+      // Extract destination from message
+      const destinationMatch = message.match(/(?:to|for|in|at|near)\s+([A-Za-z\s]+?)(?:\?|$)/i);
+      const destination = destinationMatch ? destinationMatch[1].trim() : null;
+
+      // Fetch trips from Firebase
+      try {
+        let trips = [];
+        const tripsRef = db.collection('trips');
+        let query = tripsRef;
+
+        // Filter by destination if provided
+        if (destination) {
+          query = query.where('location', '==', destination);
+        }
+
+        const snapshot = await query.limit(5).get();
+        
+        if (!snapshot.empty) {
+          snapshot.forEach(doc => {
+            trips.push({
+              id: doc.id,
+              ...doc.data()
+            });
+          });
+
+          // Format trips response
+          if (destination) {
+            botResponse = `Found ${trips.length} trips to ${destination}:\n\n`;
+          } else {
+            botResponse = `Found ${trips.length} available trips:\n\n`;
+          }
+
+          trips.forEach((trip, index) => {
+            botResponse += `${index + 1}. ${trip.description || trip.location}\n`;
+            if (trip.location) botResponse += `   Location: ${trip.location}\n`;
+            if (trip.departure) botResponse += `   Departure: ${trip.departure}\n`;
+            if (trip.pricePerSeat) botResponse += `   Price: PKR ${trip.pricePerSeat}\n`;
+            if (trip.availableSeats) botResponse += `   Available Seats: ${trip.availableSeats}\n`;
+            botResponse += `\n`;
+          });
+
+          botResponse += `Visit the Explore page to book or see more details!`;
+        } else {
+          if (destination) {
+            botResponse = `No trips found to ${destination} right now.\n\n`;
+            botResponse += `But you can check the Explore page to see all available trips or try a different destination!`;
+          } else {
+            botResponse = `Great! I can help you find trips. To show you the best options, please tell me:\n\n`;
+            botResponse += `1. Where would you like to go? (e.g., Islamabad, Lahore, Hunza)\n`;
+            botResponse += `2. When are you planning to travel?\n`;
+            botResponse += `3. How many days?\n`;
+            botResponse += `4. What's your budget?\n\n`;
+            botResponse += `You can also visit the Explore page to browse all available trips!`;
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching trips from Firebase:', error);
+        botResponse = `I'm having trouble fetching trips right now. Please visit the Explore page to see all available trips.`;
+      }
+    } else {
+      // For general questions, use Groq API
+      const systemPrompt = `You are a helpful travel assistant for an adventure trip booking platform.
+You help users with travel questions, recommendations, and booking assistance.
+Keep responses short, friendly, and helpful.
+IMPORTANT: Do NOT use any markdown formatting like **, ##, -, *, or bullet points.
+Do NOT use special characters or formatting.
+Write in plain, simple text only.
+Use line breaks (\n) instead of bullet points.`;
+
+      try {
+        const response = await axios.post(
+          'https://api.groq.com/openai/v1/chat/completions',
+          {
+            model: 'mixtral-8x7b-32768',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: message }
+            ],
+            temperature: 0.7,
+            max_tokens: 300
+          },
+          {
+            headers: {
+              'Authorization': `Bearer ${process.env.GROQ_API_KEY_CHAT}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        if (response.data && response.data.choices && response.data.choices[0]) {
+          botResponse = response.data.choices[0].message.content.trim();
+        } else {
+          botResponse = 'Sorry, I could not process your request. Please try again.';
+        }
+      } catch (error) {
+        console.error('Groq API error:', error.response?.data || error.message);
+        botResponse = 'I am having trouble connecting to the AI service. Please try again later.';
+      }
+    }
+
+    res.json({
+      success: true,
+      response: botResponse
+    });
+  } catch (error) {
+    console.error('Chatbot error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to process your message. Please try again.'
+    });
+  }
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
