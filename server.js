@@ -502,7 +502,7 @@ Use line breaks (\n) instead of bullet points.`;
         const response = await axios.post(
           'https://api.groq.com/openai/v1/chat/completions',
           {
-            model: 'mixtral-8x7b-32768',
+            model: 'moonshotai/kimi-k2-instruct',
             messages: [
               { role: 'system', content: systemPrompt },
               { role: 'user', content: message }
