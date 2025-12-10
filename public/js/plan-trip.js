@@ -418,18 +418,43 @@ export function formatStructuredPlan(plan, formData) {
     // Calculate budget amount for comparison
     const budgetAmount = parseInt(budget.toString().replace(/[^0-9]/g, '')) || 0;
 
+    // Ensure every cost field is present (no N/A allowed)
+    const costDefaults = {
+        transportation: 'PKR 0',
+        accommodation: 'PKR 0',
+        food: 'PKR 0',
+        activities: 'PKR 0',
+        visa: 'PKR 0',
+        additional_expenses: 'PKR 0',
+        total: 'PKR 0'
+    };
+    if (!plan.tripCost) plan.tripCost = { ...costDefaults };
+    // If backend sent separate main/local, merge them
+    if (plan.tripCost.main_transport || plan.tripCost.local_transport) {
+        const main = parseInt((plan.tripCost.main_transport||'').toString().replace(/[^0-9]/g,''))||0;
+        const local = parseInt((plan.tripCost.local_transport||'').toString().replace(/[^0-9]/g,''))||0;
+        const combined = main+local;
+        plan.tripCost.transportation = `PKR ${combined}`;
+    }
+    plan.tripCost = { ...costDefaults, ...plan.tripCost };
+
     // Budget Comparison
-    const totalCostStr = plan.tripCost && plan.tripCost.total ? plan.tripCost.total.toString() : '';
+    const totalCostStr = plan.tripCost.total.toString();
     const totalCost = parseInt(totalCostStr.replace(/[^0-9]/g, '')) || 0;
 
     if (totalCost > 0) {
-        const budgetStatus = totalCost > budgetAmount ? 'warning' : 'success';
-        const statusColor = budgetStatus === 'warning' ? '#d32f2f' : '#006734';
-        const statusBg = budgetStatus === 'warning' ? '#ffebee' : '#e8f5e9';
-        const difference = Math.abs(totalCost - budgetAmount);
-        const message = budgetStatus === 'warning'
-            ? `Total estimated cost is PKR ${totalCost}, which is PKR ${difference} over your budget.`
-            : `Total estimated cost is PKR ${totalCost}, which is PKR ${difference} under your budget.`;
+        const diff = totalCost - budgetAmount;
+        const absDiff = Math.abs(diff);
+        let budgetStatus = 'fits';
+        if (diff > 0) budgetStatus = 'exceeds';
+        else if (diff < 0) budgetStatus = 'under';
+        if (Math.abs(diff) <= budgetAmount * 0.05) budgetStatus = 'fits';
+        const statusColor = budgetStatus === 'exceeds' ? '#d32f2f' : budgetStatus === 'under' ? '#006734' : '#1976d2';
+        const statusBg = budgetStatus === 'exceeds' ? '#ffebee' : budgetStatus === 'under' ? '#e8f5e9' : '#e3f2fd';
+        let message = '';
+        if (budgetStatus === 'exceeds') message = `Your trip exceeds your budget by PKR ${absDiff}.`;
+        else if (budgetStatus === 'under') message = `Good news! Your trip will cost PKR ${totalCost}, saving you PKR ${absDiff} from your budget.`;
+        else message = `Your trip fits well within your budget.`;
 
         html += `
             <div class="plan-section" style="margin-bottom: 3rem; animation: fadeInUp 0.5s ease-out;">
@@ -438,6 +463,11 @@ export function formatStructuredPlan(plan, formData) {
                     <div>
                         <h3 style="color: ${statusColor}; margin: 0 0 0.25rem 0; font-size: 1.1rem;">Budget Analysis</h3>
                         <p style="color: var(--text-dark); margin: 0; font-size: 0.95rem;">${message}</p>
+                        ${budgetStatus==='exceeds' ? `<ul style="margin-top:0.75rem; padding-left:1.25rem; color:#555; font-size:0.9rem; line-height:1.6;">
+                            <li>Consider cheaper accommodation options.</li>
+                            <li>Travel on off-peak dates or shorten trip duration.</li>
+                            <li>Opt for budget-friendly transport or reduce paid activities.</li>
+                        </ul>` : ''}
                     </div>
                 </div>
             </div>
@@ -454,14 +484,14 @@ export function formatStructuredPlan(plan, formData) {
         </h2>
     `;
 
-    // 1. Transport Options (BEFORE Weather)
-    if (plan.localTransportation && plan.localTransportation.options && plan.localTransportation.options.length > 0) {
+    // 1. Main Transport Options (BEFORE Weather)
+    if (plan.mainTransportation && plan.mainTransportation.options && plan.mainTransportation.options.length > 0) {
         html += `
             <div class="plan-section" style="margin-bottom: 4rem;">
-                ${renderSectionTitle('fa-solid fa-bus', 'Travel Options', 'var(--primary-color)', 'var(--primary-dark)')}
+                ${renderSectionTitle('fa-solid fa-bus', 'Main Transport Options', 'var(--primary-color)', 'var(--primary-dark)')}
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
         `;
-        plan.localTransportation.options.forEach((option, idx) => {
+        plan.mainTransportation.options.forEach((option, idx) => {
             const transportIcon = option.type.toLowerCase().includes('bus') ? 'fa-bus' :
                                  option.type.toLowerCase().includes('train') ? 'fa-train' :
                                  option.type.toLowerCase().includes('taxi') ? 'fa-taxi' :
@@ -703,12 +733,36 @@ export function formatStructuredPlan(plan, formData) {
                 <div class="glass-panel" style="padding: 2.5rem; border-radius: 24px; max-width: 800px; margin: 0 auto;">
                     <div style="display: grid; gap: 1rem; margin-bottom: 2rem;">
                         <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid rgba(0,0,0,0.05);">
+                            <span style="color: var(--text-light); font-weight: 500;">Transportation (main + local)</span>
+                            <strong style="color: var(--text-dark); font-size: 1.1rem;">${plan.tripCost.transportation}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid rgba(0,0,0,0.05);">
                             <span style="color: var(--text-light); font-weight: 500;">Accommodation</span>
-                            <strong style="color: var(--text-dark); font-size: 1.1rem;">${plan.tripCost.accommodation || 'N/A'}</strong>
+                            <strong style="color: var(--text-dark); font-size: 1.1rem;">${plan.tripCost.accommodation}</strong>
                         </div>
                         <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid rgba(0,0,0,0.05);">
                             <span style="color: var(--text-light); font-weight: 500;">Food</span>
-                            <strong style="color: var(--text-dark); font-size: 1.1rem;">${plan.tripCost.food || 'N/A'}</strong>
+                            <strong style="color: var(--text-dark); font-size: 1.1rem;">${plan.tripCost.food}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid rgba(0,0,0,0.05);">
+                            <span style="color: var(--text-light); font-weight: 500;">Activities</span>
+                            <strong style="color: var(--text-dark); font-size: 1.1rem;">${plan.tripCost.activities}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid rgba(0,0,0,0.05);">
+                            <span style="color: var(--text-light); font-weight: 500;">Visa</span>
+                            <strong style="color: var(--text-dark); font-size: 1.1rem;">${plan.tripCost.visa}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid rgba(0,0,0,0.05);">
+                            <span style="color: var(--text-light); font-weight: 500;">Additional Expenses</span>
+                            <strong style="color: var(--text-dark); font-size: 1.1rem;">${plan.tripCost.additional_expenses}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid rgba(0,0,0,0.05);">
+                            <span style="color: var(--text-light); font-weight: 500;">Accommodation</span>
+                            <strong style="color: var(--text-dark); font-size: 1.1rem;">${plan.tripCost.accommodation}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid rgba(0,0,0,0.05);">
+                            <span style="color: var(--text-light); font-weight: 500;">Food</span>
+                            <strong style="color: var(--text-dark); font-size: 1.1rem;">${plan.tripCost.food}</strong>
                         </div>
                         <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid rgba(0,0,0,0.05);">
                             <span style="color: var(--text-light); font-weight: 500;">Transportation</span>
@@ -716,12 +770,12 @@ export function formatStructuredPlan(plan, formData) {
                         </div>
                         <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid rgba(0,0,0,0.05);">
                             <span style="color: var(--text-light); font-weight: 500;">Attractions</span>
-                            <strong style="color: var(--text-dark); font-size: 1.1rem;">${plan.tripCost.attractions || 'N/A'}</strong>
+                            <strong style="color: var(--text-dark); font-size: 1.1rem;">${plan.tripCost.attractions }</strong>
                         </div>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 2rem; background: var(--primary-gradient); color: white; border-radius: 16px; box-shadow: var(--shadow-hover);">
                         <span style="font-size: 1.2rem; font-weight: 600;">Total Estimated Cost</span>
-                        <span style="font-size: 1.5rem; font-weight: 800;">${plan.tripCost.total || 'N/A'}</span>
+                        <span style="font-size: 1.5rem; font-weight: 800;">${plan.tripCost.total}</span>
                     </div>
                 </div>
             </div>
@@ -899,4 +953,3 @@ onAuthStateChanged(auth, (user) => {
 });
 
 console.log('plan-trip.js module loaded, savePlan function available:', typeof window.savePlan);
-
