@@ -5,9 +5,6 @@ const path = require('path');
 const axios = require('axios');
 const multer = require('multer');
 
-
-
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -97,6 +94,11 @@ CRITICAL: For the "transport" section, provide AUTHENTIC transport options from 
 - Provide realistic costs for each option
 - Include detailed descriptions of each transport option
 - Consider the route distance and travel time
+- Do NOT include helicopter or private helicopter options in any transport section
+- Use accurate, current market prices only; never inflate or deflate to fit the user's budget.
+- If the calculated total cost is lower than the user's budget, include a field "budgetSavings" with the amount saved.
+- If the calculated total cost exceeds the user's budget, include a field "budgetExcess" with the amount over.
+- Always calculate costs honestly; do not force totals to equal the provided budget.
 - Tailor to the budget category (${budgetCategory})
 
 Return ONLY valid JSON with this exact structure:
@@ -178,10 +180,7 @@ Return ONLY valid JSON with this exact structure:
       throw new Error('Empty plan generated');
     }
 
-    // Save the raw response
     const rawResponseText = rawResponse.trim();
-
-
 
     // Extract JSON from response - handle various formats
     let generatedPlan = rawResponseText;
@@ -201,19 +200,16 @@ Return ONLY valid JSON with this exact structure:
 
     // Try multiple extraction strategies
     const extractionStrategies = [
-      // Strategy 1: Direct JSON object
       () => {
         const jsonMatch = generatedPlan.match(/\{[\s\S]*\}/);
         if (jsonMatch) return jsonMatch[0];
         return null;
       },
-      // Strategy 2: Clean and extract
       () => {
         const cleaned = generatedPlan.replace(/^[^{]*({.*})[^}]*$/s, '$1').trim();
         if (cleaned.startsWith('{') && cleaned.endsWith('}')) return cleaned;
         return null;
       },
-      // Strategy 3: Find largest JSON object
       () => {
         const matches = generatedPlan.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g);
         if (matches && matches.length > 0) {
@@ -228,7 +224,6 @@ Return ONLY valid JSON with this exact structure:
       try {
         extractedJson = strategy();
         if (extractedJson) {
-          // Test if it's valid JSON
           JSON.parse(extractedJson);
           generatedPlan = extractedJson;
           break;
@@ -238,8 +233,6 @@ Return ONLY valid JSON with this exact structure:
       }
     }
 
-
-
     // Try to parse as JSON with multiple strategies
     let planData;
     let parseSuccess = false;
@@ -248,7 +241,6 @@ Return ONLY valid JSON with this exact structure:
     try {
       planData = JSON.parse(generatedPlan);
 
-      // Transform to frontend expected format
       if (planData.trip) {
         const transformedPlan = {
           weather: planData.weather || [],
@@ -262,7 +254,6 @@ Return ONLY valid JSON with this exact structure:
           tripCost: planData.budget_breakdown || planData.tripCost || {},
           safetyTips: planData.safetyTips || [],
           itinerary: planData.itinerary || [],
-          // Keep original data for reference
           originalData: planData
         };
         planData = transformedPlan;
@@ -296,10 +287,8 @@ Return ONLY valid JSON with this exact structure:
 
         // Strategy 3: Try to find and extract the largest valid JSON object
         try {
-          // Find all potential JSON objects
           const jsonMatches = generatedPlan.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g);
           if (jsonMatches && jsonMatches.length > 0) {
-            // Try each match, starting with the longest
             const sortedMatches = jsonMatches.sort((a, b) => b.length - a.length);
             for (const match of sortedMatches) {
               try {
@@ -315,10 +304,9 @@ Return ONLY valid JSON with this exact structure:
             }
           }
         } catch (extractError) {
-          // Silent fail, try next strategy
+          // Silent fail
         }
 
-        // Strategy 4: Last resort - send raw response for frontend to handle
         if (!parseSuccess) {
           planData = {
             rawResponse: rawResponseText,
@@ -334,7 +322,7 @@ Return ONLY valid JSON with this exact structure:
       planData.rawResponse = rawResponseText;
     }
 
-    // If parsing failed, create a basic structure with raw response
+    // If parsing failed, create a basic structure
     if (!parseSuccess || !planData) {
       planData = {
         weather: [],
@@ -351,12 +339,43 @@ Return ONLY valid JSON with this exact structure:
       };
     }
 
+    // ---- Post-processing: Remove helicopter + budget calculation ----
+    let totalCost = 0;
+    try {
+      const filterHelicopter = (opts = []) =>
+        opts.filter(o => !String(o.type || '').toLowerCase().includes('helicopter'));
 
+      if (planData.mainTransportation && Array.isArray(planData.mainTransportation.options)) {
+        planData.mainTransportation.options = filterHelicopter(planData.mainTransportation.options);
+      }
+      if (planData.mainTransport && Array.isArray(planData.mainTransport.options)) {
+        planData.mainTransport.options = filterHelicopter(planData.mainTransport.options);
+      }
+
+      // Calculate total from budget_breakdown (if exists)
+      if (planData.tripCost && typeof planData.tripCost === 'object') {
+        totalCost = Object.values(planData.tripCost)
+          .reduce((sum, val) => sum + parseInt(String(val).replace(/[^0-9]/g, '') || 0), 0);
+      }
+    } catch (e) {
+      totalCost = 0;
+    }
+
+    const userBudget = budgetAmount || 0;
+    if (totalCost > 0 && userBudget > 0) {
+      planData.calculatedTotalCost = `PKR ${totalCost}`;
+      if (totalCost > userBudget) {
+        planData.budgetExcess = `PKR ${totalCost - userBudget}`;
+      } else if (totalCost < userBudget) {
+        planData.budgetSavings = `PKR ${userBudget - totalCost}`;
+      }
+    }
 
     res.json({
       success: true,
       plan: planData
     });
+
   } catch (error) {
     console.error('Error generating trip plan:', error.response?.data || error.message);
     const errorMessage = error.response?.data?.error?.message || error.message || 'Failed to generate trip plan. Please try again.';
@@ -365,9 +384,9 @@ Return ONLY valid JSON with this exact structure:
       error: errorMessage
     });
   }
-});
+});   // <-- YEH BAND HO GAYA THA – AB THEEK HAI
 
-// AI Image Prediction
+// AI Image Prediction - GET info
 app.get('/api/predict-image', (req, res) => {
   res.status(200).json({
     success: false,
@@ -379,8 +398,6 @@ app.get('/api/predict-image', (req, res) => {
 app.post('/api/predict-image', upload.single('image'), async (req, res) => {
   const start = Date.now();
   try {
-
-
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'No image file provided' });
     }
@@ -388,7 +405,6 @@ app.post('/api/predict-image', upload.single('image'), async (req, res) => {
     const FormData = require('form-data');
     const formData = new FormData();
 
-    // Use buffer since we are using memory storage
     formData.append('image', req.file.buffer, {
       filename: req.file.originalname || 'image.jpg',
       contentType: req.file.mimetype
@@ -399,12 +415,9 @@ app.post('/api/predict-image', upload.single('image'), async (req, res) => {
       formData,
       {
         headers: { ...formData.getHeaders() },
-        // Allow waiting for the upstream model indefinitely unless overridden by env var
         timeout: parseInt(process.env.PREDICT_TIMEOUT_MS, 10) || 0
       }
     );
-
-    // No need to unlink file as it is in memory
 
     return res.json({ success: true, prediction: response.data });
   } catch (error) {
@@ -424,7 +437,6 @@ app.post('/api/predict-image', upload.single('image'), async (req, res) => {
     });
   }
 });
-
 
 // Start server
 app.listen(PORT, () => {
