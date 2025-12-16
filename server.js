@@ -76,18 +76,67 @@ app.post('/api/generate-plan', async (req, res) => {
 
     const datesList = dates.join(', ');
 
+    
+    const normalizeBudget = (input) => {
+      if (!input) return 0;
+      const str = String(input).toLowerCase().replace(/\s+/g, '');
+      const lacMatch = str.match(/([0-9]*\.?[0-9]+)\s*(lac|lakh)/);
+      if (lacMatch) {
+        return Math.round(parseFloat(lacMatch[1]) * 100000);
+      }
+      const kMatch = str.match(/([0-9]*\.?[0-9]+)\s*k/);
+      if (kMatch) {
+        return Math.round(parseFloat(kMatch[1]) * 1000);
+      }
+      // Default: strip non-digits
+      return parseInt(str.replace(/[^0-9]/g, '')) || 0;
+    };
+
     // Calculate budget per person per day for smart recommendations
-    const budgetAmount = parseInt(budget.toString().replace(/[^0-9]/g, ''));
+    const budgetAmount = normalizeBudget(budget);
     const budgetPerPersonPerDay = Math.floor(budgetAmount / (numberOfPeople * days));
+    
     const budgetCategory = budgetPerPersonPerDay < 2000 ? 'budget' : budgetPerPersonPerDay < 5000 ? 'mid-range' : 'premium';
 
     const prompt = `Generate a detailed trip plan in JSON format for a trip from ${departure} to ${destination}. 
-Trip details: ${days} days, ${numberOfPeople} people, Total Budget: ${budget} (${budgetCategory} category - PKR ${budgetPerPersonPerDay}/person/day), Dates: ${datesList}.
+Trip details: ${days} days, ${numberOfPeople} people, Total Budget: PKR ${budgetAmount.toLocaleString('en-PK')} (${budgetCategory} category - PKR ${budgetPerPersonPerDay}/person/day), Dates: ${datesList}.
 
-IMPORTANT: Tailor ALL recommendations based on the budget category:
-- For BUDGET trips: Recommend affordable local transport, budget hotels/hostels, street food, free attractions
-- For MID-RANGE trips: Mix of comfort and value, good local restaurants, mid-range hotels
-- For PREMIUM trips: Luxury accommodations, fine dining, exclusive experiences
+ AUTHENTIC BUDGET HANDLING (MANDATORY):
+User's stated budget: PKR ${budgetAmount.toLocaleString('en-PK')}
+
+Your job: Generate REALISTIC, BALANCED prices for this route (${departure} to ${destination}).
+Prices should be AUTHENTIC but REASONABLE - not too high, not too low.
+
+Instead:
+1. Research REAL costs for ${departure} to ${destination} (${days} days, ${numberOfPeople} people)
+2. Show HONEST breakdown: transport, accommodation, food, activities, misc
+
+PRICE GUIDELINES (BALANCED APPROACH):
+- Transport: Use average market prices (not cheapest, not most expensive)
+- Accommodation: Budget hotels/guesthouses (clean, basic, reasonable)
+- Food: Local restaurants and street food (authentic, affordable)
+- Activities: Mix of free and paid attractions
+- Misc: Realistic miscellaneous expenses
+
+Example for 75000 PKR Hunza trip (5 days):
+- Transport (Rawalpindi-Hunza): 3000 PKR (shared jeep, comfortable)
+- Accommodation (4 nights): 8000 PKR (decent guesthouse)
+- Food (5 days): 5000 PKR (good local restaurants)
+- Activities: 3000 PKR (paid attractions, guides)
+- Misc: 1000 PKR (miscellaneous)
+- Total: 20000 PKR
+- User's budget: 75000 PKR
+- budgetSavings: 55000 PKR (show this clearly)
+- Provide full plan with all recommendations
+
+Example for 1000 PKR Hunza trip (5 days):
+- Transport: 800 PKR (shared jeep)
+- Accommodation: 900 PKR (budget guesthouse)
+- Food: 200 PKR (local food)
+- Activities: 100 PKR (free attractions)
+- Total: 2000 PKR
+- User's budget: 1000 PKR
+- budgetGap: 1000 PKR (show this clearly)
 
 CRITICAL: For the "transport" section, provide AUTHENTIC transport options from ${departure} to ${destination}:
 - Include real transport types available on this route (buses, trains, wagons, taxis, etc.)
@@ -95,11 +144,16 @@ CRITICAL: For the "transport" section, provide AUTHENTIC transport options from 
 - Include detailed descriptions of each transport option
 - Consider the route distance and travel time
 - Do NOT include helicopter or private helicopter options in any transport section
-- Use accurate, current market prices only; never inflate or deflate to fit the user's budget.
-- If the calculated total cost is lower than the user's budget, include a field "budgetSavings" with the amount saved.
-- If the calculated total cost exceeds the user's budget, include a field "budgetExcess" with the amount over.
-- Always calculate costs honestly; do not force totals to equal the provided budget.
-- Tailor to the budget category (${budgetCategory})
+- Use accurate, current market prices that FIT within the user's budget
+- Calculate REALISTIC total cost based on actual market prices
+- For budgets >= 75000 PKR or trips <= 5 days: TRY to fit within budget
+- For other cases: Show HONEST costs and budgetGap if needed
+- Include "budgetSavings" field if total is less than user's budget
+- Include "budgetGap" field if total exceeds user's budget (show the difference)
+- Include "budgetRecommendation" field with realistic minimum budget for this trip
+- NEVER fake prices - show authentic costs
+- If budget is insufficient, explain what can be reduced (activities, days, accommodation quality)
+- Tailor recommendations to the budget category (${budgetCategory})
 
 Return ONLY valid JSON with this exact structure:
 {
@@ -107,7 +161,7 @@ Return ONLY valid JSON with this exact structure:
     "destination": "${destination}",
     "duration": "${days} days",
     "travelers": ${numberOfPeople},
-    "total_budget": ${budget.replace(/[^0-9]/g, '')}
+    "total_budget": ${budgetAmount.toLocaleString('en-PK')}
   },
   "weather": [
     {"date": "YYYY-MM-DD", "condition": "sunny/rainy/cloudy", "temperature": "25°C", "description": "weather details"}
@@ -143,7 +197,10 @@ Return ONLY valid JSON with this exact structure:
     "activities": "PKR 2000",
     "visa": "PKR 1000",
     "additional_expenses": "PKR 500",
-    "total": "PKR 17500"
+    "total": "PKR 17500",
+    "budgetStatus": "within" or "exceeded",
+    "budgetSavings": "PKR 2500" (if total is less than user budget),
+    "budgetExcess": "PKR 5000" (if total exceeds user budget)
   },
   "safetyTips": ["tip1", "tip2"],
   "itinerary": [
@@ -156,7 +213,7 @@ Return ONLY valid JSON with this exact structure:
       {
         model: "moonshotai/kimi-k2-instruct",
         messages: [
-          { role: "system", content: "You are a helpful travel planner. Always respond in valid JSON only." },
+          { role: "system", content: "You are a realistic travel planner for Pakistan. You MUST: 1. Stick to provided budget limits exactly 2. Provide REALISTIC recommendations for the budget category 3. Never suggest options that exceed the budget constraints 4. If budget is insufficient, suggest realistic alternatives 5. Always include exact costs in PKR 6. Respond in valid JSON only" },
           { role: "user", content: prompt }
         ],
         temperature: 0.4,
@@ -354,14 +411,15 @@ Return ONLY valid JSON with this exact structure:
 
       // Calculate total from budget_breakdown (if exists)
       if (planData.tripCost && typeof planData.tripCost === 'object') {
-        totalCost = Object.values(planData.tripCost)
-          .reduce((sum, val) => sum + parseInt(String(val).replace(/[^0-9]/g, '') || 0), 0);
+        // Prefer explicit total if provided by the AI
+        if (planData.tripCost.total) {
+        }
       }
     } catch (e) {
       totalCost = 0;
     }
 
-    const userBudget = budgetAmount || 0;
+    const userBudget = normalizeBudget(budget) || 0;
     if (totalCost > 0 && userBudget > 0) {
       planData.calculatedTotalCost = `PKR ${totalCost}`;
       if (totalCost > userBudget) {

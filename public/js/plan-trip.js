@@ -365,7 +365,7 @@ if (tripPlanForm) {
 
 // Function to get image URL - uses keyword-based image mapping
 function getAttractionImage(attractionName) {
-    // Return local attraction.jpg asset
+    
     return 'assets/attraction.jpg';
 }
 
@@ -415,8 +415,19 @@ export function formatStructuredPlan(plan, formData) {
             </div>
     `;
 
-    // Calculate budget amount for comparison
-    const budgetAmount = parseInt(budget.toString().replace(/[^0-9]/g, '')) || 0;
+    // Helper to interpret inputs like '1.5 lac', '150k', etc.
+    const normalizeBudget = (input) => {
+        if (!input) return 0;
+        const str = String(input).toLowerCase().replace(/\s+/g, '');
+        const lacMatch = str.match(/([0-9]*\.?[0-9]+)\s*(lac|lakh)/);
+        if (lacMatch) return Math.round(parseFloat(lacMatch[1]) * 100000);
+        const kMatch = str.match(/([0-9]*\.?[0-9]+)\s*k/);
+        if (kMatch) return Math.round(parseFloat(kMatch[1]) * 1000);
+        return parseInt(str.replace(/[^0-9]/g, '')) || 0;
+    };
+
+    // Calculate budget amount for comparison using same logic as backend
+    const budgetAmount = normalizeBudget(budget);
 
     // Ensure every cost field is present (no N/A allowed)
     const costDefaults = {
@@ -433,14 +444,21 @@ export function formatStructuredPlan(plan, formData) {
     if (plan.tripCost.main_transport || plan.tripCost.local_transport) {
         const main = parseInt((plan.tripCost.main_transport||'').toString().replace(/[^0-9]/g,''))||0;
         const local = parseInt((plan.tripCost.local_transport||'').toString().replace(/[^0-9]/g,''))||0;
-        const combined = main+local;
-        plan.tripCost.transportation = `PKR ${combined}`;
+        const combined = Number(main) + Number(local);
+        // Format with thousands separator for clarity
+        plan.tripCost.transportation = `PKR ${combined.toLocaleString('en-PK')}`;
     }
     plan.tripCost = { ...costDefaults, ...plan.tripCost };
 
-    // Budget Comparison
-    const totalCostStr = plan.tripCost.total.toString();
-    const totalCost = parseInt(totalCostStr.replace(/[^0-9]/g, '')) || 0;
+    // Budget Comparison - prefer backend-calculated total if available
+    let totalCost = 0;
+    if (plan.calculatedTotalCost) {
+        totalCost = parseInt(plan.calculatedTotalCost.toString().replace(/[^0-9]/g, '')) || 0;
+    }
+    if (!totalCost) {
+        const totalCostStr = (plan.tripCost && plan.tripCost.total ? plan.tripCost.total.toString() : '0');
+        totalCost = parseInt(totalCostStr.replace(/[^0-9]/g, '')) || 0;
+    }
 
     if (totalCost > 0) {
         const diff = totalCost - budgetAmount;
