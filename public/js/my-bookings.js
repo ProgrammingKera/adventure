@@ -279,6 +279,10 @@ function showEditModal(currentSeats, totalSeats, pricePerSeat) {
         // Store resolve function globally for this modal
         window[`editModalResolve_${modalId}`] = resolve;
         
+        // Calculate max seats user can book (current + available)
+        // totalSeats here is actually available seats
+        const maxSeatsCanBook = currentSeats + totalSeats;
+        
         const modalHTML = `
             <div id="${modalId}" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 1rem;">
                 <div style="background: white; border-radius: 16px; max-width: 450px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: modalSlideIn 0.3s ease-out;">
@@ -298,16 +302,16 @@ function showEditModal(currentSeats, totalSeats, pricePerSeat) {
                             </div>
                             <div style="display: flex; justify-content: space-between;">
                                 <span style="color: #6b7280;">Available seats:</span>
-                                <span style="font-weight: 700; color: #006734;">${totalSeats}</span>
+                                <span style="font-weight: 700; color: #006734;" id="available-seats-${modalId}">${totalSeats}</span>
                             </div>
                         </div>
                         
                         <div style="margin-bottom: 1.5rem;">
                             <label style="display: block; margin-bottom: 0.5rem; color: #374151; font-weight: 600;">New number of seats:</label>
-                            <input type="number" id="seats-input-${modalId}" min="1" max="${totalSeats}" value="${currentSeats}" 
+                            <input type="number" id="seats-input-${modalId}" min="1" max="${maxSeatsCanBook}" value="${currentSeats}" 
                                 style="width: 100%; padding: 0.75rem; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem; transition: border-color 0.2s;"
                                 onfocus="this.style.borderColor='#006734'" onblur="this.style.borderColor='#e5e7eb'">
-                            <div style="font-size: 0.85rem; color: #6b7280; margin-top: 0.5rem;">Enter a number between 1 and ${totalSeats}</div>
+                            <div style="font-size: 0.85rem; color: #6b7280; margin-top: 0.5rem;">Enter a number between 1 and ${maxSeatsCanBook} seats</div>
                         </div>
                         
                         <div style="display: flex; gap: 1rem;">
@@ -335,25 +339,35 @@ function showEditModal(currentSeats, totalSeats, pricePerSeat) {
         // Add event listener to Update button
         setTimeout(() => {
             const updateBtn = document.getElementById(`update-btn-${modalId}`);
+            const seatsInput = document.getElementById(`seats-input-${modalId}`);
+            const availableSeatsSpan = document.getElementById(`available-seats-${modalId}`);
+            
+            // Update available seats dynamically as user types
+            if (seatsInput && availableSeatsSpan) {
+                seatsInput.addEventListener('input', () => {
+                    const newSeats = parseInt(seatsInput.value) || currentSeats;
+                    const remainingAvailable = Math.max(0, totalSeats - (newSeats - currentSeats));
+                    availableSeatsSpan.textContent = remainingAvailable;
+                });
+            }
+            
             if (updateBtn) {
                 updateBtn.addEventListener('click', () => {
-                    const input = document.getElementById(`seats-input-${modalId}`);
-                    const value = parseInt(input.value);
-                    if (value && value > 0 && value <= totalSeats) {
+                    const value = parseInt(seatsInput.value);
+                    if (value && value > 0 && value <= maxSeatsCanBook) {
                         document.getElementById(`${modalId}`).remove();
                         resolve(value);
                     } else {
-                        input.style.borderColor = '#ef4444';
-                        setTimeout(() => input.style.borderColor = '#e5e7eb', 2000);
+                        seatsInput.style.borderColor = '#ef4444';
+                        setTimeout(() => seatsInput.style.borderColor = '#e5e7eb', 2000);
                     }
                 });
             }
             
             // Focus input
-            const input = document.getElementById(`seats-input-${modalId}`);
-            if (input) {
-                input.focus();
-                input.select();
+            if (seatsInput) {
+                seatsInput.focus();
+                seatsInput.select();
             }
         }, 100);
         
@@ -488,8 +502,18 @@ window.editBooking = async function(bookingId, tripId, currentSeats, totalSeats,
     try {
         console.log('Edit booking started:', { bookingId, tripId, currentSeats, totalSeats, pricePerSeat });
         
-        // Show edit modal
-        const newSeats = await showEditModal(currentSeats, totalSeats, pricePerSeat);
+        // Fetch fresh trip data to get current available seats
+        const freshTripDoc = await getDoc(doc(db, 'trips', tripId));
+        if (!freshTripDoc.exists()) {
+            showCustomModal('Error', 'Trip not found', 'error');
+            return;
+        }
+        const freshTrip = freshTripDoc.data();
+        const freshAvailableSeats = Math.max(0, (freshTrip.totalSeats || 0) - (freshTrip.bookedSeats || 0));
+        const freshMaxSeats = currentSeats + freshAvailableSeats;
+        
+        // Show edit modal with fresh data
+        const newSeats = await showEditModal(currentSeats, freshAvailableSeats, pricePerSeat);
         console.log('New seats from modal:', newSeats);
         
         if (newSeats === null) {
@@ -547,8 +571,16 @@ window.editBooking = async function(bookingId, tripId, currentSeats, totalSeats,
             'success'
         );
         
-        document.getElementById('trip-details-modal').remove();
-        loadMyBookings();
+        // Close modal and reload bookings to show updated data
+        const modalElement = document.getElementById('trip-details-modal');
+        if (modalElement) modalElement.remove();
+        
+        // Reload bookings after delay to ensure database is updated
+        setTimeout(async () => {
+            await loadMyBookings();
+            // Re-open trip details modal with fresh data from database
+            await viewTripDetails(tripId);
+        }, 1000);
         
     } catch (error) {
         console.error('Error updating booking:', error);
